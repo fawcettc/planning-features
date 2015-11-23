@@ -25,7 +25,7 @@ import extractors
 __version__ = 0.1
 __authors__ = 'Chris Fawcett'
 __date__ = '2013-11-15'
-__updated__ = '2015-11-21'
+__updated__ = '2015-11-22'
 
 __default_mem_limit__ = 6144
 __default_per_extraction_time_limit__ = 1800
@@ -39,6 +39,8 @@ class TopLevelFeatureExtractor(extractors.FeatureExtractor):
         if args.extract_simple_pddl:
             self.extractors.append(extractors.SimplePDDLFeatureExtractor(args))
 
+        if args.extract_sas:
+            self.extractors.append(extractors.SASFeatureExtractor(args))
 
     def extract(self, domain_path, instance_path):
         all_features = {}
@@ -105,6 +107,14 @@ if __name__ == "__main__":
 
     parser.add_argument("--simple-pddl-no-extended-features", dest="simple_pddl_extended_features", action='store_false', help="Do not extract the extended PDDL features")
     parser.set_defaults(simple_pddl_extended_features=True)
+
+    # SAS+ features
+    parser.add_argument("--extract-sas", dest="extract_sas", action="store_true", help="Extract features from the SAS+ problem representation")
+    parser.add_argument("--no-extract-sas", dest="extract_sas", action="store_false", help="Disable SAS+ features")
+    parser.set_defaults(extract_sas=True)
+
+    parser.add_argument("--sas-no-graph-features", dest="sas_graph_features", action="store_false", help="Do not extract the SAS+ graph features")
+    parser.set_defaults(sas_graph_features=True)
 
     args = parser.parse_args(sys.argv[1:])
 

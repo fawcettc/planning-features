@@ -1,0 +1,41 @@
+#! /bin/bash
+
+set -e
+
+BASEDIR="$(dirname "$0")"
+
+function die {
+    echo "$@" 1>&2
+    exit 1
+}
+
+function usage {
+    die "usage: $(basename "$0") PROBLEM_FILE DOMAIN_FILE RUNTIME_LIMIT RUNLENGTH_LIMIT RANDOM_SEED [SEARCH PARAMETERS]"
+}
+
+# Paths to planner components
+TRANSLATE="$BASEDIR/translate/translate.py"
+PREPROCESS="$BASEDIR/preprocess/preprocess"
+SEARCH="$BASEDIR/search/downward"
+
+if [[ "$#" < 5 ]]; then
+    usage
+fi
+
+echo "Full argument list is $@"
+
+$TRANSLATE "$2" "$1"
+runtimeLimit=$3
+runlengthLimit=$4
+seed=$5
+
+echo "Pre-shift, runtimeLimit = $runtimeLimit, seed = $seed"
+
+shift 5
+
+$PREPROCESS < ./output.sas
+
+echo "Using runtime limit of $runtimeLimit"
+ulimit -St $runtimeLimit; $SEARCH --random-seed $seed "$@" < output 
+
+exit $?
