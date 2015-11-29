@@ -25,7 +25,7 @@ import extractors
 __version__ = 0.1
 __authors__ = 'Chris Fawcett'
 __date__ = '2013-11-15'
-__updated__ = '2015-11-22'
+__updated__ = '2015-11-28'
 
 __default_mem_limit__ = 6144
 __default_per_extraction_time_limit__ = 1800
@@ -41,6 +41,9 @@ class TopLevelFeatureExtractor(extractors.FeatureExtractor):
 
         if args.extract_sas:
             self.extractors.append(extractors.SASFeatureExtractor(args))
+
+        if args.extract_lpg_probing:
+            self.extractors.append(extractors.LPGProbingFeatureExtractor(args))
 
     def extract(self, domain_path, instance_path):
         all_features = {}
@@ -115,6 +118,11 @@ if __name__ == "__main__":
 
     parser.add_argument("--sas-no-graph-features", dest="sas_graph_features", action="store_false", help="Do not extract the SAS+ graph features")
     parser.set_defaults(sas_graph_features=True)
+
+    # LPG probing
+    parser.add_argument("--extract-lpg-probing", dest="extract_lpg_probing", action="store_true", help="Extract features using LPG probing runs")
+    parser.add_argument("--no-extract-lpg-probing", dest="extract_lpg_probing", action="store_false", help="Disable LPG probing features")
+    parser.set_defaults(extract_lpg_probing=True)
 
     args = parser.parse_args(sys.argv[1:])
 
