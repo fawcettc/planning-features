@@ -25,7 +25,7 @@ import extractors
 __version__ = 0.1
 __authors__ = 'Chris Fawcett'
 __date__ = '2013-11-15'
-__updated__ = '2015-11-29'
+__updated__ = '2015-12-02'
 
 __default_mem_limit__ = 6144
 __default_per_extraction_time_limit__ = 1800
@@ -49,6 +49,9 @@ class TopLevelFeatureExtractor(extractors.FeatureExtractor):
             self.extractors.append(extractors.FDProbingFeatureExtractor(args))
         elif args.extract_fd_probing:
             print "ERROR: You must have SAS+ features enabled if FD probing features are enabled."
+
+        if args.extract_sat:
+            self.extractors.append(extractors.SATFeatureExtractor(args))
 
     def extract(self, domain_path, instance_path):
         all_features = {}
@@ -133,6 +136,11 @@ if __name__ == "__main__":
     parser.add_argument("--extract-fd-probing", dest="extract_fd_probing", action="store_true", help="Extract features using FD probing runs")
     parser.add_argument("--no-extract-fd-probing", dest="extract_fd_probing", action="store_false", help="Disable FD probing features")
     parser.set_defaults(extract_fd_probing=True)
+
+    # SAT
+    parser.add_argument("--extract-sat", dest="extract_sat", action="store_true", help="Extract features using translation to SAT")
+    parser.add_argument("--no-extract-sat", dest="extract_sat", action="store_false", help="Disable SAT features")
+    parser.set_defaults(extract_sat=True)
 
     args = parser.parse_args(sys.argv[1:])
 
