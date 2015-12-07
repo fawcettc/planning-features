@@ -1,0 +1,33 @@
+
+TorchLight: parsing domain file
+domain 'ZENO-TRAVEL' defined
+ ... done.
+TorchLight: parsing problem file
+problem 'ZTRAVEL-2-10' defined
+ ... done.
+
+
+
+
+TorchLight: running local-monotone Enforced Hill-Climbing analysis... 
+
+TorchLight (approximate) monotone-local-EHC analysis of sampled states:
+Success and hence no local minima under h+: 100.00%
+Dead-end states:   0.00%
+Exit distance bound min:    0, mean:   0.00, max:    0
+
+Time spent:    0.00 seconds instantiating 2720 easy, 0 hard action templates
+               0.00 seconds reachability analysis, yielding 154 facts and 2720 actions
+               0.00 seconds creating final representation with 154 relevant facts
+               0.00 seconds building connectivity graph
+               0.00 seconds in FD translator generating variables
+               0.00 seconds preparing support graph and DTGs
+               0.00 seconds statically analyzing support graph and DTGs
+               0.00 seconds in guaranteed global analysis
+               0.00 seconds in guaranteed local analysis of initial state
+               0.00 seconds in approximate local analysis of initial state
+               0.01 seconds sampling states
+               0.00 seconds in guaranteed local analysis of sample states
+               0.00 seconds in approximate local analysis of sample states
+TL TOTAL TIME:    0.00 seconds, of which    0.00 were spent computing relaxed plans for analysis.
+

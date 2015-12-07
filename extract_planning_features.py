@@ -25,7 +25,7 @@ import extractors
 __version__ = 0.1
 __authors__ = 'Chris Fawcett'
 __date__ = '2013-11-15'
-__updated__ = '2015-12-02'
+__updated__ = '2015-12-06'
 
 __default_mem_limit__ = 6144
 __default_per_extraction_time_limit__ = 1800
@@ -52,6 +52,9 @@ class TopLevelFeatureExtractor(extractors.FeatureExtractor):
 
         if args.extract_sat:
             self.extractors.append(extractors.SATFeatureExtractor(args))
+
+        if args.extract_torchlight:
+            self.extractors.append(extractors.TorchlightFeatureExtractor(args))
 
     def extract(self, domain_path, instance_path):
         all_features = {}
@@ -141,6 +144,11 @@ if __name__ == "__main__":
     parser.add_argument("--extract-sat", dest="extract_sat", action="store_true", help="Extract features using translation to SAT")
     parser.add_argument("--no-extract-sat", dest="extract_sat", action="store_false", help="Disable SAT features")
     parser.set_defaults(extract_sat=True)
+
+    # Torchlight
+    parser.add_argument("--extract-torchlight", dest="extract_torchlight", action="store_true", help="Extract features using Torchlight")
+    parser.add_argument("--no-extract-torchlight", dest="extract_torchlight", action="store_false", help="Disable Torchlight features")
+    parser.set_defaults(extract_torchlight=True)
 
     args = parser.parse_args(sys.argv[1:])
 

@@ -1,0 +1,35 @@
+Type "make" to obtain the executable "torchlight". This program is
+based on FF, and takes the basic arguments (PDDL files) in the same
+way. Run without arguments to obtain usage instructions. The default
+settings are what's reported on in the papers. If you need different
+settings, good luck with understanding the explanations in the usage
+instructions... you can contact me in case of questions, and with a
+bit of luck I'll still remember myself what the respective parameter
+is about.
+
+Being based on FF means of course that TorchLight inherits the
+difficulties of compiling FF's parser, see there. 
+
+Since TorchLight uses Fast Downwards's translator, it also inherits a
+couple of difficulties from that. In fact, the translator included
+("GENERATE-VARS" sub-directory) is an old version. It doesn't work
+properly on the IPC'04 Promela domains (Dining-Philosophers and
+Optical-Telegraph). The experiments reported in the papers use a newer
+translator version for (only) these.
+
+Only STRIPS domains are handled correctly by the algorithms. I
+included a syntax checker verifying whether the input is Ok (both FF
+and Fast Downward in principle parse a much larger PDDL subset), but I
+don't guarantee that this syntax checker finds all non-allowed
+constructs. So please make sure yourself.
+
+One annoying thing about the current configuration is that the only
+way of running the torchlight executable is in a directory, like this
+one, that contains the "GENERATE-VARS" sub-directory. This is due to
+the way that Fast Downwards's translator is currently being
+called. This is probably trivial to fix, but I have not as yet
+bothered finding out. If you do fix it, let me know.
+
+Have fun,
+Joerg Hoffmann
+
