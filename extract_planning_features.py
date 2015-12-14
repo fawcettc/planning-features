@@ -175,8 +175,8 @@ if __name__ == "__main__":
     values = [str(value) for key,value in sorted_features]
 
     if args.csv_header:
-        print '"%s"' % '","'.join(keys)
+        print '"instanceName","%s"' % '","'.join(keys)
 
-    print '"%s"' % '","'.join(values)
+    print '"%s","%s"' % (instance_file, '","'.join(values))
 
     sys.exit(0)
