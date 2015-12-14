@@ -12,6 +12,8 @@ class SATFeatureExtractor(FeatureExtractor):
     def __init__(self, args):
         super(SATFeatureExtractor, self).__init__(args)
 
+        self.extractor_name = "MpSAT"
+
     def default_features(self):
         base_features = [
             'MpSAT-nvarsOrig',
@@ -151,6 +153,8 @@ class SATFeatureExtractor(FeatureExtractor):
         path_to_mp = "%s/sat/Mp" % (self.abs_script_directory)
         mp_command = [path_to_mp, "-F", "10", "-T", "10", "-O", "-b", "translatedInstance", domain_path, instance_path]
 
+        successful = False
+
         try:
             output_directory = self.execute_command_with_runsolver(mp_command, None, None)
 
@@ -173,12 +177,16 @@ class SATFeatureExtractor(FeatureExtractor):
                         sat_features = self.extract_sat_features(feature_names, feature_values)
                         features.update(sat_features)
 
+                        # make sure at least one non-sentinel value, otherwise obviously not successful
+                        for key,value in features.iteritems():
+                            if value != self.sentinel_value:
+                                successful = True
         except Exception as e:
             print "Exception running the SAT translation: %s" % (str(e))
         finally:
             shutil.rmtree(output_directory)
 
-        return features
+        return successful,features
 
     def extract_sat_features(self, names, values):
         sat_features = {}

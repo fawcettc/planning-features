@@ -22,11 +22,13 @@ class FeatureExtractor(object):
 
         self.sentinel_value = "-512.0"
 
+        self.extractor_name = "BASE EXTRACTOR"
+
     '''
     '''
     def extract(self, domain_path, instance_path):
         print "ERROR: You should have written a new extract() for your feature extractor"
-        return {}
+        return False,{}
 
     '''
     '''

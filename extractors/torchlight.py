@@ -12,6 +12,8 @@ class TorchlightFeatureExtractor(FeatureExtractor):
     def __init__(self, args):
         super(TorchlightFeatureExtractor, self).__init__(args)
 
+        self.extractor_name = "torchlight"
+
     def default_features(self):
         base_features = [
             'torchlight-successPercentage',
@@ -33,11 +35,13 @@ class TorchlightFeatureExtractor(FeatureExtractor):
     def extract(self, domain_path, instance_path):
         features = self.default_features()
 
-        path_to_lpg = "%s/torchlight/torchlight" % (self.abs_script_directory)
-        lpg_command = [path_to_lpg, "-o", domain_path, "-f", instance_path, "-Z"]
+        path_to_torchlight = "%s/torchlight/torchlight" % (self.abs_script_directory)
+        torchlight_command = [path_to_torchlight, "-o", domain_path, "-f", instance_path, "-Z"]
+
+        successful = False
 
         try:
-            output_directory = self.execute_command_with_runsolver(lpg_command, None, None)
+            output_directory = self.execute_command_with_runsolver(torchlight_command, None, None)
 
             with open("%s/cmd.stdout" % (output_directory), 'r') as f:
                 output = f.read()
@@ -45,12 +49,16 @@ class TorchlightFeatureExtractor(FeatureExtractor):
                 torchlight_features = self.extract_features(output)
                 features.update(torchlight_features)
 
+                # make sure at least one non-sentinel value, otherwise obviously not successful
+                for key,value in features.iteritems():
+                    if value != self.sentinel_value:
+                        successful = True
         except Exception as e:
             print "Exception running Torchlight: %s" % (str(e))
         finally:
             shutil.rmtree(output_directory)
 
-        return features
+        return successful,features
 
     def extract_features(self, output):
         torchlight_features = {}

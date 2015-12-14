@@ -19,6 +19,7 @@ import os
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from subprocess import Popen, PIPE
 import shutil
+import time
 
 import extractors
 
@@ -62,17 +63,30 @@ class TopLevelFeatureExtractor(extractors.FeatureExtractor):
         sas_representation_dir = None
 
         for extractor in self.extractors:
+            start_time = time.time()
+
             try:
                 if extractor.requires_sas_representation:
                     extractor.sas_representation_dir = sas_representation_dir
 
-                features = extractor.extract(domain_path, instance_path)
-                all_features.update(features)
+                successful,features = extractor.extract(domain_path, instance_path)
+                end_time = time.time()
 
                 if extractor.creates_sas_representation:
                     sas_representation_dir = extractor.sas_representation_dir
             except:
-                all_features.update(extractor.default_features())
+                successful = False
+                features = extractor.default_features()
+                end_time = time.time()
+
+            all_features.update(features)
+
+            elapsed = end_time-start_time
+            success_value = "0"
+            if successful:
+                success_value = "1"
+
+            all_features.update({("meta-time-%s" % extractor.extractor_name):str(elapsed), ("meta-success-%s" % extractor.extractor_name):success_value})
 
         if sas_representation_dir != None:
             shutil.rmtree(sas_representation_dir)

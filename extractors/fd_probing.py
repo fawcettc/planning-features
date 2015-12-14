@@ -12,11 +12,13 @@ class FDProbingFeatureExtractor(FeatureExtractor):
     def __init__(self, args):
         super(FDProbingFeatureExtractor, self).__init__(args)
 
+        self.extractor_name = "fd-probing"
+
         self.requires_sas_representation = True
 
     def default_features(self):
         base_features = [
-            'fdProbingReasonableOrderedRemoved',
+            'fdProbingReasonableOrdersRemoved',
             'fdProbingLandmarksDiscovered',
             'fdProbingLandmarksPercentageDisjunctive',
             'fdProbingLandmarksPercentageConjunctive',
@@ -44,6 +46,7 @@ class FDProbingFeatureExtractor(FeatureExtractor):
         path_to_fd = "%s/fast-downward/search/downward" % (self.abs_script_directory)
         fd_command = [path_to_fd, "ipc", "seq-sat-lama-2011"]
 
+        successful = False
         try:
             sas_path = "%s/output" % self.sas_representation_dir
             output_directory = self.execute_command_with_runsolver(fd_command, None, sas_path, 1.0)
@@ -54,12 +57,16 @@ class FDProbingFeatureExtractor(FeatureExtractor):
                 probing_features = self.extract_probing_features(output)
                 features.update(probing_features)
 
+                # make sure at least one non-sentinel value, otherwise obviously not successful
+                for key,value in features.iteritems():
+                    if value != self.sentinel_value:
+                        successful = True
         except Exception as e:
             print "Exception running FD: %s" % (str(e))
         finally:
             shutil.rmtree(output_directory)
 
-        return features
+        return successful,features
 
     def extract_probing_features(self, output):
         probing_features = {}
@@ -80,7 +87,7 @@ class FDProbingFeatureExtractor(FeatureExtractor):
                 probing_features['fdProbingLandmarksPercentageDisjunctive'] = disjunctive/landmarks
                 probing_features['fdProbingLandmarksPercentageConjunctive'] = conjunctive/landmarks
 
-        edges_match = re.search("^([0-9]*) edges", output)
+        edges_match = re.search("([0-9]*) edges", output)
         if edges_match:
             probing_features['fdProbingNumEdges'] = edges_match.group(1)
 

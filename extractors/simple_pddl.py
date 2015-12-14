@@ -11,6 +11,7 @@ class SimplePDDLFeatureExtractor(FeatureExtractor):
     def __init__(self, args):
         super(SimplePDDLFeatureExtractor, self).__init__(args)
 
+        self.extractor_name = "simple-pddl"
         self.simple_pddl_extended_features = args.simple_pddl_extended_features
 
     def default_features(self):
@@ -89,17 +90,35 @@ class SimplePDDLFeatureExtractor(FeatureExtractor):
         return defaults
 
     def extract(self, domain_path, instance_path):
-        task = pddl.open(task_filename=instance_path, domain_filename=domain_path)
-
         features = self.default_features()
+
+        successful = False
+
+        try:
+            task = pddl.open(task_filename=instance_path, domain_filename=domain_path)
+
+            pddl_features = self.extract_features_from_pddl_task(task)
+            features.update(pddl_features)
+
+            # make sure at least one non-sentinel value, otherwise obviously not successful
+            for key,value in features.iteritems():
+                if value != self.sentinel_value:
+                    successful = True
+        except Exception as e:
+            print "Exception running simple_pddl extraction: %s" % (str(e))
+
+        return successful,features
+
+    def extract_features_from_pddl_task(self, task):
+        pddl_features = {}
 
         num_actions = len(task.actions)
 
         # length-1 because we don't want to count the equality predicate
         num_predicates = len(task.predicates)-1
 
-        features['pddlNumActions'] = num_actions
-        features['pddlNumPredicates'] = num_predicates
+        pddl_features['pddlNumActions'] = num_actions
+        pddl_features['pddlNumPredicates'] = num_predicates
 
         # predicate arity (min, mean, max)
         if num_predicates > 0:
@@ -119,9 +138,9 @@ class SimplePDDLFeatureExtractor(FeatureExtractor):
                         max_params_per_predicate = num_arguments
 
             if num_predicates > 0:
-                features['pddlMinParamsPerPredicate'] = min_params_per_predicate
-                features['pddlMeanParamsPerPredicate'] = float(total_params)/float(num_predicates)
-                features['pddlMaxParamsPerPredicate'] = max_params_per_predicate
+                pddl_features['pddlMinParamsPerPredicate'] = min_params_per_predicate
+                pddl_features['pddlMeanParamsPerPredicate'] = float(total_params)/float(num_predicates)
+                pddl_features['pddlMaxParamsPerPredicate'] = max_params_per_predicate
 
         # predicates in preconditions (min, mean, max)
         if num_actions > 0:
@@ -158,9 +177,9 @@ class SimplePDDLFeatureExtractor(FeatureExtractor):
                     max_predicates_per_precondition = num_parts
 
             if num_actions > 0:
-                features['pddlMinPredicatesPerPrecondition'] = min_predicates_per_precondition
-                features['pddlMeanPredicatesPerPrecondition'] = float(total_parts)/float(num_actions)
-                features['pddlMaxPredicatesPerPrecondition'] = max_predicates_per_precondition
+                pddl_features['pddlMinPredicatesPerPrecondition'] = min_predicates_per_precondition
+                pddl_features['pddlMeanPredicatesPerPrecondition'] = float(total_parts)/float(num_actions)
+                pddl_features['pddlMaxPredicatesPerPrecondition'] = max_predicates_per_precondition
 
 
         # predicates in effects (min, mean, max)
@@ -211,18 +230,18 @@ class SimplePDDLFeatureExtractor(FeatureExtractor):
                 total_negations += num_negations
 
             if num_actions > 0:
-                features['pddlMinPredicatesPerEffect'] = min_predicates_per_effect
-                features['pddlMeanPredicatesPerEffect'] = float(total_parts)/float(num_actions)
-                features['pddlMaxPredicatesPerEffect'] = max_predicates_per_effect
+                pddl_features['pddlMinPredicatesPerEffect'] = min_predicates_per_effect
+                pddl_features['pddlMeanPredicatesPerEffect'] = float(total_parts)/float(num_actions)
+                pddl_features['pddlMaxPredicatesPerEffect'] = max_predicates_per_effect
 
-                features['pddlMinNegationsPerEffect'] = min_negations_per_effect
-                features['pddlMeanNegationsPerEffect'] = float(total_negations)/float(num_actions)
-                features['pddlMaxNegationsPerEffect'] = max_negations_per_effect
+                pddl_features['pddlMinNegationsPerEffect'] = min_negations_per_effect
+                pddl_features['pddlMeanNegationsPerEffect'] = float(total_negations)/float(num_actions)
+                pddl_features['pddlMaxNegationsPerEffect'] = max_negations_per_effect
 
 
-        features['pddlMarksTotalNumActions'] = num_actions
+        pddl_features['pddlMarksTotalNumActions'] = num_actions
         if num_actions > 0:
-            features['pddlRatioActionsWithNegativeEffectsOverActions'] = float(num_actions_with_negative_effects)/float(num_actions)
+            pddl_features['pddlRatioActionsWithNegativeEffectsOverActions'] = float(num_actions_with_negative_effects)/float(num_actions)
 
         if isinstance(task.goal, conditions.Conjunction):
             num_goals = len(task.goal.parts)
@@ -237,8 +256,8 @@ class SimplePDDLFeatureExtractor(FeatureExtractor):
             print task.goal
             die
 
-        features['pddlNumGoals'] = num_goals
-        features['pddlNumObjects'] = len(task.objects) - len(task.constants)
+        pddl_features['pddlNumGoals'] = num_goals
+        pddl_features['pddlNumObjects'] = len(task.objects) - len(task.constants)
 
         num_initial_conditions = 0
         num_equality = 0
@@ -261,46 +280,46 @@ class SimplePDDLFeatureExtractor(FeatureExtractor):
                 print condition.dump()
                 die
 
-        features['pddlNumInitialConditions'] = num_initial_conditions
+        pddl_features['pddlNumInitialConditions'] = num_initial_conditions
 
-        features['pddlRequiresADL'] = (1.0 if ':adl' in task.requirements.requirements else 0.0)
-        features['pddlRequiresConditionalEffects'] = (1.0 if ':conditional-effects' in task.requirements.requirements else 0.0)
-        features['pddlRequiresDerivedPredicates'] = (1.0 if ':derived-predicates' in task.requirements.requirements else 0.0)
-        features['pddlRequiresDisjunctivePreconditions'] = (1.0 if ':disjunctive-preconditions' in task.requirements.requirements else 0.0)
-        features['pddlRequiresDomainAxioms'] = (1.0 if ':domain-axioms' in task.requirements.requirements else 0.0)
-        features['pddlRequiresEquality'] = (1.0 if ':equality' in task.requirements.requirements else 0.0)
-        features['pddlRequiresExistentialPreconditions'] = (1.0 if ':existential-preconditions' in task.requirements.requirements else 0.0)
-        features['pddlRequiresFluents'] = (1.0 if ':fluents' in task.requirements.requirements else 0.0)
-        features['pddlRequiresQuantifiedPreconditions'] = (1.0 if ':quantified-preconditions' in task.requirements.requirements else 0.0)
-        features['pddlRequiresSafetyConstraints'] = (1.0 if ':safety-constraints' in task.requirements.requirements else 0.0)
-        features['pddlRequiresStrips'] = (1.0 if ':strips' in task.requirements.requirements else 0.0)
-        features['pddlRequiresTyping'] = (1.0 if ':typing' in task.requirements.requirements else 0.0)
-        features['pddlRequiresUniversalPreconditions'] = (1.0 if ':universal-preconditions' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresADL'] = (1.0 if ':adl' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresConditionalEffects'] = (1.0 if ':conditional-effects' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresDerivedPredicates'] = (1.0 if ':derived-predicates' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresDisjunctivePreconditions'] = (1.0 if ':disjunctive-preconditions' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresDomainAxioms'] = (1.0 if ':domain-axioms' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresEquality'] = (1.0 if ':equality' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresExistentialPreconditions'] = (1.0 if ':existential-preconditions' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresFluents'] = (1.0 if ':fluents' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresQuantifiedPreconditions'] = (1.0 if ':quantified-preconditions' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresSafetyConstraints'] = (1.0 if ':safety-constraints' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresStrips'] = (1.0 if ':strips' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresTyping'] = (1.0 if ':typing' in task.requirements.requirements else 0.0)
+        pddl_features['pddlRequiresUniversalPreconditions'] = (1.0 if ':universal-preconditions' in task.requirements.requirements else 0.0)
 
         if self.simple_pddl_extended_features:
             has_types = 0
             if len(task.types) > 2:
                 has_types = 1
 
-            features['pddlNumConstants'] = len(task.constants)
-            features['pddlNumConstantsAndObjects'] = len(task.objects)
+            pddl_features['pddlNumConstants'] = len(task.constants)
+            pddl_features['pddlNumConstantsAndObjects'] = len(task.objects)
 
-            features['pddlNumEqualityInitialConditions'] = num_equality
-            features['pddlNumFunctionAssignmentsInInitialConditions'] = num_function_assignments
+            pddl_features['pddlNumEqualityInitialConditions'] = num_equality
+            pddl_features['pddlNumFunctionAssignmentsInInitialConditions'] = num_function_assignments
 
-            features['pddlHasTypes'] = has_types
-            features['pddlNumTypes'] = len(task.types)-1
+            pddl_features['pddlHasTypes'] = has_types
+            pddl_features['pddlNumTypes'] = len(task.types)-1
 
-            features['pddlRequiresActionCosts'] = (1.0 if ':action-costs' in task.requirements.requirements else 0.0)
-            features['pddlRequiresNegation'] = (1.0 if ':negation' in task.requirements.requirements else 0.0)
-            features['pddlRequiresNegativePreconditions'] = (1.0 if ':negative-preconditions' in task.requirements.requirements else 0.0)
-            features['pddlRequiresNumericFluents'] = (1.0 if ':numeric-fluents' in task.requirements.requirements else 0.0)
-            features['pddlRequiresObjectFluents'] = (1.0 if ':object-fluents' in task.requirements.requirements else 0.0)
-            features['pddlRequiresDurativeActions'] = (1.0 if ':durative-actions' in task.requirements.requirements else 0.0)
-            features['pddlRequiresDurationInequalities'] = (1.0 if ':duration-inequalities' in task.requirements.requirements else 0.0)
-            features['pddlRequiresContinuousEffects'] = (1.0 if ':continuous-effects' in task.requirements.requirements else 0.0)
-            features['pddlRequiresTimedInitialLiterals'] = (1.0 if ':timed-initial-literals' in task.requirements.requirements else 0.0)
-            features['pddlRequiresPreferences'] = (1.0 if ':preferences' in task.requirements.requirements else 0.0)
-            features['pddlRequiresConstraints'] = (1.0 if ':constraints' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresActionCosts'] = (1.0 if ':action-costs' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresNegation'] = (1.0 if ':negation' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresNegativePreconditions'] = (1.0 if ':negative-preconditions' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresNumericFluents'] = (1.0 if ':numeric-fluents' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresObjectFluents'] = (1.0 if ':object-fluents' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresDurativeActions'] = (1.0 if ':durative-actions' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresDurationInequalities'] = (1.0 if ':duration-inequalities' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresContinuousEffects'] = (1.0 if ':continuous-effects' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresTimedInitialLiterals'] = (1.0 if ':timed-initial-literals' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresPreferences'] = (1.0 if ':preferences' in task.requirements.requirements else 0.0)
+            pddl_features['pddlRequiresConstraints'] = (1.0 if ':constraints' in task.requirements.requirements else 0.0)
 
-        return features
+        return pddl_features

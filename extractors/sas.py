@@ -13,6 +13,8 @@ class SASFeatureExtractor(FeatureExtractor):
     def __init__(self, args):
         super(SASFeatureExtractor, self).__init__(args)
 
+        self.extractor_name = "sas"
+
         self.sas_graph_features = args.sas_graph_features
         self.creates_sas_representation = True
 
@@ -145,6 +147,8 @@ class SASFeatureExtractor(FeatureExtractor):
 
         translate_cmd = ["python", path_to_translate, domain_path, instance_path]
 
+        successful = False
+
         try:
             output_directory = self.execute_command_with_runsolver(translate_cmd, None, None)
 
@@ -172,16 +176,20 @@ class SASFeatureExtractor(FeatureExtractor):
                     if self.sas_graph_features:
                         preprocessed_path = "%s/output" % (output_directory)
                         if os.path.exists(preprocessed_path) and os.path.isfile(preprocessed_path):
-                            preprocessed_sas_features = self.extract_sas_graph_features(preprocessed_path)
-                            features.update(preprocessed_sas_features)
+                            sas_graph_features = self.extract_sas_graph_features(preprocessed_path)
+                            features.update(sas_graph_features)
 
+                    # make sure at least one non-sentinel value, otherwise obviously not successful
+                    for key,value in features.iteritems():
+                        if value != self.sentinel_value:
+                            successful = True
 
         except Exception as e:
             print "Exception in parse: %s" % (str(e))
         finally:
             self.sas_representation_dir = output_directory
 
-        return features
+        return successful,features
 
     def extract_stdout_features(self, output):
         stdout_features = {}
@@ -1164,6 +1172,7 @@ class SASFeatureExtractor(FeatureExtractor):
 
                 for _1 in range(num_causal_successors):
                     line = f.readline().lstrip().rstrip()
+
                     pair_match = re.search("^([0-9]*) ([0-9]*)$", line)
                     if not pair_match:
                         print "ERROR: Expected <var_index> <weight> pair but got %s" % (line)

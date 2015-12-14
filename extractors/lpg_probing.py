@@ -12,6 +12,8 @@ class LPGProbingFeatureExtractor(FeatureExtractor):
     def __init__(self, args):
         super(LPGProbingFeatureExtractor, self).__init__(args)
 
+        self.extractor_name = "lpg-probing"
+
     def default_features(self):
         base_features = [
             'lpgProbingNumActions',
@@ -32,6 +34,8 @@ class LPGProbingFeatureExtractor(FeatureExtractor):
         path_to_lpg = "%s/lpg/lpg_pre" % (self.abs_script_directory)
         lpg_command = [path_to_lpg, "-o", domain_path, "-f", instance_path, "-n", "1"]
 
+        successful = False
+
         try:
             output_directory = self.execute_command_with_runsolver(lpg_command, None, None)
 
@@ -41,12 +45,16 @@ class LPGProbingFeatureExtractor(FeatureExtractor):
                 probing_features = self.extract_probing_features(output)
                 features.update(probing_features)
 
+                # make sure at least one non-sentinel value, otherwise obviously not successful
+                for key,value in features.iteritems():
+                    if value != self.sentinel_value:
+                        successful = True
         except Exception as e:
             print "Exception running LPG: %s" % (str(e))
         finally:
             shutil.rmtree(output_directory)
 
-        return features
+        return successful,features
 
     def extract_probing_features(self, output):
         probing_features = {}
