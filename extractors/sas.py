@@ -1214,8 +1214,15 @@ class SASFeatureExtractor(FeatureExtractor):
             cg_total_outgoing_edge_weight_sum_per_variable = 0.0
 
             for var_index in range(len(variables)):
-                incoming = cg_incoming_edges_per_variable[var_index]
-                outgoing = cg_outgoing_edges_per_variable[var_index]
+                if var_index in cg_incoming_edges_per_variable:
+                    incoming = cg_incoming_edges_per_variable[var_index]
+                else:
+                    incoming = []
+
+                if var_index in cg_outgoing_edges_per_variable:
+                    outgoing = cg_outgoing_edges_per_variable[var_index]
+                else:
+                    outgoing = []
 
                 incoming_weight_sum = 0
                 for in_edge in incoming:
@@ -1260,7 +1267,10 @@ class SASFeatureExtractor(FeatureExtractor):
             cg_total_incoming_edge_weight_sum_per_high_level_variable = 0
 
             for var_index in goal_variables:
-                incoming = cg_incoming_edges_per_variable[var_index]
+                if var_index in cg_incoming_edges_per_variable:
+                    incoming = cg_incoming_edges_per_variable[var_index]
+                else:
+                    incoming = []
 
                 incoming_weight_sum = 0
                 for in_edge in incoming:
@@ -1287,8 +1297,15 @@ class SASFeatureExtractor(FeatureExtractor):
             cg_variance_outgoing_edge_weight_sum_per_variable_acc = 0.0
 
             for var_index in range(len(variables)):
-                incoming = cg_incoming_edges_per_variable[var_index]
-                outgoing = cg_outgoing_edges_per_variable[var_index]
+                if var_index in cg_incoming_edges_per_variable:
+                    incoming = cg_incoming_edges_per_variable[var_index]
+                else:
+                    incoming = []
+
+                if var_index in cg_outgoing_edges_per_variable:
+                    outgoing = cg_outgoing_edges_per_variable[var_index]
+                else:
+                    outgoing = []
 
                 incoming_weight_sum = 0.0
                 for in_edge in incoming:
