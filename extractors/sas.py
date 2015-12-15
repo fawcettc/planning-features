@@ -1272,7 +1272,7 @@ class SASFeatureExtractor(FeatureExtractor):
                 else:
                     incoming = []
 
-                incoming_weight_sum = 0
+                incoming_weight_sum = 0.0
                 for in_edge in incoming:
                     incoming_weight_sum += cg_edges[in_edge][2]
 
@@ -1348,11 +1348,15 @@ class SASFeatureExtractor(FeatureExtractor):
                 cg_stddev_incoming_edge_weight_sum_per_variable = math.sqrt(cg_variance_incoming_edge_weight_sum_per_variable)
                 cg_stddev_outgoing_edge_weight_sum_per_variable = math.sqrt(cg_variance_outgoing_edge_weight_sum_per_variable)
 
+
             cg_variance_incoming_edges_per_high_level_variable_acc = 0.0
             cg_variance_incoming_edge_weight_sum_per_high_level_variable_acc = 0.0
 
             for var_index in goal_variables:
-                incoming = cg_incoming_edges_per_variable[var_index]
+                if var_index in cg_incoming_edges_per_variable:
+                    incoming = cg_incoming_edges_per_variable[var_index]
+                else:
+                    incoming = []
 
                 incoming_weight_sum = 0.0
                 for in_edge in incoming:
@@ -1369,9 +1373,9 @@ class SASFeatureExtractor(FeatureExtractor):
             cg_stddev_incoming_edges_per_high_level_variable = None
             cg_stddev_incoming_edge_weight_sum_per_high_level_variable = None
 
-            if len(goal_variables) > 0:
-                cg_variance_incoming_edges_per_high_level_variable = float(cg_variance_incoming_edges_per_high_level_variable_acc)/float(len(goal_variables))
-                cg_variance_incoming_edge_weight_sum_per_high_level_variable = float(cg_variance_incoming_edge_weight_sum_per_high_level_variable_acc)/float(len(goal_variables))
+            if len(goal_variables) > 1:
+                cg_variance_incoming_edges_per_high_level_variable = float(cg_variance_incoming_edges_per_high_level_variable_acc)/float(len(goal_variables)-1.0)
+                cg_variance_incoming_edge_weight_sum_per_high_level_variable = float(cg_variance_incoming_edge_weight_sum_per_high_level_variable_acc)/float(len(goal_variables)-1.0)
 
                 cg_stddev_incoming_edges_per_high_level_variable = math.sqrt(cg_variance_incoming_edges_per_high_level_variable)
                 cg_stddev_incoming_edge_weight_sum_per_high_level_variable = math.sqrt(cg_variance_incoming_edge_weight_sum_per_high_level_variable)
