@@ -49,18 +49,22 @@ class FDProbingFeatureExtractor(FeatureExtractor):
         successful = False
         try:
             sas_path = "%s/output" % self.sas_representation_dir
-            output_directory = self.execute_command_with_runsolver(fd_command, None, sas_path, 1.0)
 
-            with open("%s/cmd.stdout" % (output_directory), 'r') as f:
-                output = f.read()
+            if os.path.exists(sas_path) and os.path.isfile(sas_path):
+                output_directory = self.execute_command_with_runsolver(fd_command, None, sas_path, 1.0)
 
-                probing_features = self.extract_probing_features(output)
-                features.update(probing_features)
+                with open("%s/cmd.stdout" % (output_directory), 'r') as f:
+                    output = f.read()
 
-                # make sure at least one non-sentinel value, otherwise obviously not successful
-                for key,value in features.iteritems():
-                    if value != self.sentinel_value:
-                        successful = True
+                    probing_features = self.extract_probing_features(output)
+                    features.update(probing_features)
+
+                    # make sure at least one non-sentinel value, otherwise obviously not successful
+                    for key,value in features.iteritems():
+                        if value != self.sentinel_value:
+                            successful = True
+            else:
+                print "ERROR: %s doesn't exist!!" % sas_path
         except Exception as e:
             print "Exception running FD: %s" % (str(e))
         finally:
