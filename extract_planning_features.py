@@ -14,6 +14,8 @@ extractors.
 @contact:    fawcettc@cs.ubc.ca
 '''
 
+from __future__ import print_function
+
 import sys
 import os
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -26,7 +28,7 @@ import extractors
 __version__ = 0.1
 __authors__ = 'Chris Fawcett'
 __date__ = '2013-11-15'
-__updated__ = '2015-12-06'
+__updated__ = '2015-12-18'
 
 __default_mem_limit__ = 6144
 __default_per_extraction_time_limit__ = 1800
@@ -49,7 +51,7 @@ class TopLevelFeatureExtractor(extractors.FeatureExtractor):
         if args.extract_sas and args.extract_fd_probing:
             self.extractors.append(extractors.FDProbingFeatureExtractor(args))
         elif args.extract_fd_probing:
-            print "ERROR: You must have SAS+ features enabled if FD probing features are enabled."
+            print("ERROR: You must have SAS+ features enabled if FD probing features are enabled.",file=sys.stderr)
 
         if args.extract_sat:
             self.extractors.append(extractors.SATFeatureExtractor(args))
@@ -91,7 +93,54 @@ class TopLevelFeatureExtractor(extractors.FeatureExtractor):
         if sas_representation_dir != None:
             shutil.rmtree(sas_representation_dir)
 
-        return all_features
+        return {instance_path:all_features}
+
+def export_features_csv(features, print_header=True, output_file=sys.stdout):
+    # features is a dictionary {instance : {feature_name:feature_value}}
+
+    sorted_feature_names = None
+    for instance,instance_features in features.iteritems():
+        if sorted_feature_names == None:
+            sorted_feature_names = instance_features.keys()
+            sorted_feature_names.sort()
+
+            if print_header:
+                print('"instanceName","%s"' % '","'.join(sorted_feature_names), file=output_file)
+
+        values = [str(instance_features[name]) for name in sorted_feature_names]
+        print('"%s",%s' % (instance, ','.join(values)), file=output_file)
+
+def export_features_json(features, output_file=sys.stdout):
+    # features is a dictionary {instance : {feature_name:feature_value}}
+
+    print("{", file=output_file)
+    print("    'instance_features' : {", file=output_file)
+
+    count_instances = 0
+    for instance, instance_features in features.iteritems():
+        print("        '%s' : {" % instance, file=output_file)
+
+        count_features = 0
+        for feature,value in instance_features.iteritems():
+            if count_features < len(instance_features)-1:
+                feature_sep = ","
+            else:
+                feature_sep = ""
+
+            print("            '%s' : %s%s" % (feature, str(value), feature_sep), file=output_file)
+
+            count_features += 1
+
+        if count_instances < len(features)-1:
+            instance_sep = ","
+        else:
+            instance_sep = ""
+
+        print("        }%s" % instance_sep, file=output_file)
+        count_instances += 1
+
+    print("    }", file=output_file)
+    print("}", file=output_file)
 
 if __name__ == "__main__":
     program_version = "v%s" % __version__
@@ -109,7 +158,7 @@ if __name__ == "__main__":
         source folders for that information.
 
         Distributed on an "AS IS" basis without warranties or conditions
-        of any kind, either express or implied.
+        of any kind, either expressed or implied.
 
         USAGE
     ''' % (program_shortmsg, str(__authors__), str(__date__))
@@ -124,9 +173,13 @@ if __name__ == "__main__":
 
     parser.add_argument("--domain-file", dest="domain_file", default=None, type=str, help="PDDL domain file for feature extraction")
     parser.add_argument("--instance-file", dest="instance_file", default=None, type=str, help="PDDL instance file for feature extraction")
+    parser.add_argument("--bulk-extraction-file", dest="bulk_extraction_file", default=None, type=str, help="File containing many <domain,instance> pairs, in CSV format, domain in column 1 and instance in column 2, with each path double-quoted. A header row is assumed.")
 
+    parser.add_argument("--csv-output-file", dest="csv_output_file", default="STDOUT", help="File in which to store the computed features in CSV format. Use STDOUT to print to stdout.")
     parser.add_argument("--no-csv-header", dest="csv_header", action='store_false', help="Do not print the CSV header line")
     parser.set_defaults(csv_header=True)
+
+    parser.add_argument("--json-output-file", dest="json_output_file", default=None, help="File in which to store the computed features in JSON format. Use STDOUT to print to stdout.")
 
     # simple pddl
     parser.add_argument("--extract-simple-pddl", dest="extract_simple_pddl", action='store_true', help="Extract simple PDDL features")
@@ -167,30 +220,32 @@ if __name__ == "__main__":
     args = parser.parse_args(sys.argv[1:])
 
     # check to make sure the domain and instance exist
-    if os.path.exists(args.domain_file):
+    if args.bulk_extraction_file:
+        bulk_extraction_file = os.path.abspath(args.bulk_extraction_file)
+
+    elif os.path.exists(args.domain_file) and os.path.exists(args.instance_file):
         domain_file = os.path.abspath(args.domain_file)
-    else:
-        print "ERROR: Domain file %s does not exist!" % args.domain_file
-        sys.exit(1)
-
-    if os.path.exists(args.instance_file):
         instance_file = os.path.abspath(args.instance_file)
+
+        top_level_extractor = TopLevelFeatureExtractor(args)
+        features = top_level_extractor.extract(domain_file, instance_file)
+
     else:
-        print "ERROR: Instance file %s does not exist!" % args.instance_file
+        print("ERROR: You must specify either --bulk-extraction-file or both --domain-file and --instance-file.", file=sys.stderr)
         sys.exit(1)
 
-    top_level_extractor = TopLevelFeatureExtractor(args)
-    features = top_level_extractor.extract(domain_file, instance_file)
+    if features and args.csv_output_file:
+        if args.csv_output_file == "STDOUT":
+            export_features_csv(features, print_header=args.csv_header, output_file=sys.stdout)
+        else:
+            with open(os.path.abspath(args.csv_output_file), 'w') as f:
+                export_features_csv(features, print_header=args.csv_header, output_file=f)
 
-    sorted_features = features.items()
-    sorted_features.sort(key=lambda x: x[0])
-
-    keys = [str(key) for key,value in sorted_features]
-    values = [str(value) for key,value in sorted_features]
-
-    if args.csv_header:
-        print '"instanceName","%s"' % '","'.join(keys)
-
-    print '"%s","%s"' % (instance_file, '","'.join(values))
+    if features and args.json_output_file:
+        if args.json_output_file == "STDOUT":
+            export_features_json(features, output_file=sys.stdout)
+        else:
+            with open(os.path.abspath(args.json_output_file), 'w') as f:
+                export_features_json(features, output_file=f)
 
     sys.exit(0)
