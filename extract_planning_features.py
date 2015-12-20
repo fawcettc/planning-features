@@ -219,15 +219,33 @@ if __name__ == "__main__":
 
     args = parser.parse_args(sys.argv[1:])
 
+    top_level_extractor = TopLevelFeatureExtractor(args)
+
     # check to make sure the domain and instance exist
     if args.bulk_extraction_file:
         bulk_extraction_file = os.path.abspath(args.bulk_extraction_file)
+
+        features = {}
+        with open(bulk_extraction_file, 'r') as f:
+            first = True
+            for line in f:
+                if not first:
+                    line = line.lstrip().rstrip()
+                    components = line.split(",")
+                    components = map(lambda x: x.lstrip('"').rstrip('"'), components)
+
+                    domain_file = os.path.abspath(components[0])
+                    instance_file = os.path.abspath(components[1])
+
+                    instance_features = top_level_extractor.extract(domain_file, instance_file)
+                    features.update(instance_features)
+                else:
+                    first = False
 
     elif os.path.exists(args.domain_file) and os.path.exists(args.instance_file):
         domain_file = os.path.abspath(args.domain_file)
         instance_file = os.path.abspath(args.instance_file)
 
-        top_level_extractor = TopLevelFeatureExtractor(args)
         features = top_level_extractor.extract(domain_file, instance_file)
 
     else:
