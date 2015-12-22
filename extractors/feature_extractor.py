@@ -20,7 +20,7 @@ class FeatureExtractor(object):
         self.creates_sas_representation = False
         self.requires_sas_representation = False
 
-        self.sentinel_value = "-512.0"
+        self.sentinel_value = "0.0"
 
         self.extractor_name = "BASE EXTRACTOR"
 
