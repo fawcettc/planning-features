@@ -31,7 +31,7 @@ class LPGProbingFeatureExtractor(FeatureExtractor):
     def extract(self, domain_path, instance_path):
         features = self.default_features()
 
-        path_to_lpg = "%s/lpg/lpg_pre" % (self.abs_script_directory)
+        path_to_lpg = "%s/lpg/lpg-probing" % (self.abs_script_directory)
         lpg_command = [path_to_lpg, "-o", domain_path, "-f", instance_path, "-n", "1"]
 
         successful = False
