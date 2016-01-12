@@ -153,7 +153,7 @@
 
 /* maximal string length
  */
-#define MAX_LENGTH 256 
+#define MAX_LENGTH 512
 
 
 /* marks border between connected items 
@@ -358,8 +358,12 @@ struct _command_line {
   char path[MAX_LENGTH];
   char ops_file_name[MAX_LENGTH];
   char fct_file_name[MAX_LENGTH];
+
+  char fdr_path[MAX_LENGTH];
+
   int display_info;
   int debug;
+  Bool use_FD;
 
   Bool do_gDG;
   Bool do_lDG;
@@ -377,7 +381,6 @@ struct _command_line {
   Bool diagnose_prune_useless_var0;
   Bool do_diagnose_invertop0;
   Bool do_diagnose_ignore_exchangedvars;
-  Bool negative_diagnose_all;
   int num_samples;
   int depth_samples;
 
@@ -1374,7 +1377,7 @@ typedef struct _DTG {
   /* the condition we'll impose on non-leafs in lDGs and gDGs:
    *
    * OUTDATED! Now the test for invertible is "irrelevant side effect
-   * deletes and no side effects on V \setminus {x0}. The latter part
+   * deletes and no side effects on V \setminus {x0}". The latter part
    * is dynamic so we cannot test this once and for all. However, if
    * this bool here is true then we don't need to bother going into
    * further detail, since this implies the new criterion. So it's
@@ -1870,7 +1873,7 @@ extern int gnum_rplan;
 
 
 
-/* to communicate back analysis results
+/* to communicate back analysis results (used in several places)
  */
 extern Bool gsuccess;
 extern int ged_bound;
@@ -1896,15 +1899,46 @@ extern FILE *goutput_file;
 
 
 
-/* for diagnosis!
- *
- * First of all, a flag whether we're actually diagnosing the reasons
- * for negative outcome -- on option, we want to do this diagnosis
- * only for those states for which actually had this outcome. The
- * outcome will be known only posthum so have to run analysis two
- * times.
+
+/* Joerg2014: global vars needed for new features introduced in this
+   version of TorchLight
  */
-extern Bool gdo_negative_diagnosis;
+
+/* global analysis: features here simply count the number of gDGs that
+   fail due to a particular reason (sum may be > 100%, each possible
+   reason is tested independently)
+ */
+extern int ggDG_num_fail_cyclic;
+extern int ggDG_num_fail_t0notadequate;
+extern int ggDG_num_fail_nonleavesnotadequate;
+
+/* approximate local analysis
+ */
+/* same as for global analysis
+ */
+extern int goDGplus_num_fail_cyclic;
+extern int goDGplus_num_fail_t0notadequate;
+extern int goDGplus_num_fail_nonleavesnotadequate;
+/* new count, to measure stats at attempt-level as opposed to
+   sample-state level
+*/    
+extern int goDGplus_num_graphs; 
+/* positive features ie from success
+ */
+extern int goDGplus_num_succ_t0;
+extern int goDGplus_num_succ_t0adequateRFCempty;
+extern int goDGplus_num_succ_t0adequateRFCrecovered;
+extern int goDGplus_num_succ_nonleavesDTGt;
+extern int goDGplus_num_succ_nonleavesDTGtnoseff;
+extern int goDGplus_num_succ_nonleavesDTGtirrdel;
+extern int goDGplus_num_succ_nonleavesDTGtirrseffdel;
+
+
+
+
+
+/* for diagnosis!
+ */
 
 /* counts of how many successful/failed analysis attempts
  */
@@ -1912,73 +1946,19 @@ extern int ggDG_num_graphs;/* for gDG, also need to count number of graphs consi
 extern int ggDG_num_successes;
 extern int glDG_num_successes; /* here num trials is simply number of samples */
 extern int goDGplus_num_successes;
-extern int goDGplus_num_failures;
 
-/* The first guy here will be the union of success var0s in gDG
- * analysis.
- */
-extern int *ggDG_responsible_var0s;
-extern int *ggDG_responsible_op0s;/* index into goperators array! */
-extern int *ggDG_responsible_op0var0s_weights;/* how many times this guy? */
-extern int ggDG_num_responsible_op0var0s;
-
-/* The next guy will be the union of success var0s in lDG analysis.
- */
-extern int *glDG_responsible_var0s;
-extern int *glDG_responsible_var0s_weights;/* how many times this guy? */
-extern int glDG_num_responsible_var0s;
-
-/* These here will be the pairs of (successful t0-eff-pred, op0-actionname) for oDG+
- * analysis.
- */
-extern int *goDGplus_responsible_pred0s;
-extern int *goDGplus_responsible_op0s;/* index into goperators array! */
-extern int *goDGplus_responsible_op0pred0s_weights;
-extern int goDGplus_num_responsible_op0pred0s;
-
-/* Here are the variables that appeared on a cycle in oDG+ analysis.
- */
-extern int *goDGplus_cycle_vars;
-extern int *goDGplus_cycle_vars_weights;
-extern int goDGplus_num_cycle_vars;
-
-/* /\* Here are all facts that were in non-recovered RFC_intersect */
-/*  *\/ */
-/* extern int *goDGplus_nonrecovered_RFC_intersect; */
-/* extern int goDGplus_num_nonrecovered_RFC_intersect; */
-
-/* Instead, collect pair of op0-actionname and ft-pred of RFS Intersect.
+/* collect pair of op0-actionname and ft-pred of RFS Intersect.
  */
 extern int *goDGplus_nonrecovered_RFC_intersect_preds;
 extern int *goDGplus_nonrecovered_RFC_intersect_op0s;/* index into goperators array! */
 extern int *goDGplus_nonrecovered_RFC_intersects_weights;
 extern int goDGplus_num_nonrecovered_RFC_intersects;
 extern int goDGplus_nonrecovered_RFC_intersects_totalweight;
-
-/* for comparison, here's the alternative previously used, recording
- * op0/var instead.
+/* Joerg2014: new count in order to be able to give back a meaningful
+   feature: number of delete effect predicates considered to be
+   harmful (according to previous diagnosis).
  */
-extern int *gOLD_oDGplus_nonrecovered_RFC_intersect_vars;
-extern int *gOLD_oDGplus_nonrecovered_RFC_intersect_op0s;/* index into goperators array! */
-extern int *gOLD_oDGplus_nonrecovered_RFC_intersects_weights;
-extern int gOLD_oDGplus_num_nonrecovered_RFC_intersects;
-extern int gOLD_oDGplus_nonrecovered_RFC_intersects_totalweight;
-
-/* For any non-leaf transition that was invertible/induced but had
- * side effects, here is the pair of responsible rop-actionname and
- * side-effect variable.
- */
-extern int *goDGplus_nonleafbadtrans_seffvars;
-extern int *goDGplus_nonleafbadtrans_rops;/* index into goperators array! */
-extern int *goDGplus_nonleafbadtranss_weights;
-extern int goDGplus_num_nonleafbadtranss;
-
-/* flag so that SG cycle check knows who he is working for.
- * 1 = gDG, 2 = lDG, 3 = oDG+
- */
-extern int gchecking_acyclic_for;
-
-
+extern int gnum_delete_predicates;
 
 /* for EHC run, checking the "predictive quality" of the sampling.
  */

@@ -35,24 +35,32 @@ class TorchlightFeatureExtractor(FeatureExtractor):
     def extract(self, domain_path, instance_path):
         features = self.default_features()
 
+        path_to_translate  = "%s/torchlight/GENERATE-VARS/translate/translate.py" % self.abs_script_directory
+        translate_command = ["python", path_to_translate, domain_path, instance_path]
+
         path_to_torchlight = "%s/torchlight/torchlight" % (self.abs_script_directory)
-        torchlight_command = [path_to_torchlight, "-o", domain_path, "-f", instance_path, "-Z"]
+        torchlight_command = [path_to_torchlight, "-o", domain_path, "-f", instance_path, "-s", "100", "-V", "-v", "./output.sas"]
 
         successful = False
 
         try:
-            output_directory = self.execute_command_with_runsolver(torchlight_command, None, None)
+            output_directory = self.execute_command_with_runsolver(translate_command, None, None)
 
-            with open("%s/cmd.stdout" % (output_directory), 'r') as f:
-                output = f.read()
+            sas_path = "%s/output.sas" % (output_directory)
 
-                torchlight_features = self.extract_features(output)
-                features.update(torchlight_features)
+            if os.path.exists(sas_path) and os.path.isfile(sas_path):
+                self.execute_command_with_runsolver(torchlight_command, output_directory, None)
 
-                # make sure at least one non-sentinel value, otherwise obviously not successful
-                for key,value in features.iteritems():
-                    if value != self.sentinel_value:
-                        successful = True
+                with open("%s/cmd.stdout" % (output_directory), 'r') as f:
+                    output = f.read()
+
+                    torchlight_features = self.extract_features(output)
+                    features.update(torchlight_features)
+
+                    # make sure at least one non-sentinel value, otherwise obviously not successful
+                    for key,value in features.iteritems():
+                        if value != self.sentinel_value:
+                            successful = True
         except Exception as e:
             print "Exception running Torchlight: %s" % (str(e))
         finally:
@@ -62,16 +70,21 @@ class TorchlightFeatureExtractor(FeatureExtractor):
 
     def extract_features(self, output):
         torchlight_features = {}
+        print "torchlight output %s" % output
 
-        success_percentage_match = re.search("Success and hence no local minima under h\+:\s+([0-9\.]*)%", output)
+        success_percentage_match = re.search("Perc successful gDG\s+:\s+([0-9\.]*)\s+\/\*", output)
         if success_percentage_match:
             torchlight_features['torchlight-successPercentage'] = float(success_percentage_match.group(1))/100.0
 
-        dead_end_states_match = re.search("Dead-end states:\s+([0-9\.]*)%", output)
+        dead_end_states_match = re.search("Perc dead end states\s+:\s+([\-0-9\.]*)", output)
         if dead_end_states_match:
-            torchlight_features['torchlight-deadEndPercentage'] = float(dead_end_states_match.group(1))/100.0
+            match = dead_end_states_match.group(1)
+            if match == "-2147483648":
+                torchlight_features['torchlight-deadEndPercentage'] = -1.0
+            else:
+                torchlight_features['torchlight-deadEndPercentage'] = float(match)/100.0
 
-        exit_distance_match = re.search("Exit distance bound min:\s+([0-9\.\-]*), mean:\s+([0-9\.\-]*), max:\s+([0-9\.\-]*)", output)
+        exit_distance_match = re.search("h\+ exit distance bound\s+:\s+([0-9\.\-]*),\s+([0-9\.\-]*),\s+([0-9\.\-]*) \/\* min, mean, max over successful gDGs", output)
         if exit_distance_match:
             torchlight_features['torchlight-exitDistanceMin'] = float(exit_distance_match.group(1))
             torchlight_features['torchlight-exitDistanceMean'] = float(exit_distance_match.group(2))

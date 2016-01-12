@@ -1,25 +1,5 @@
 
 
-/*********************************************************************
- * (C) Copyright 2010 INRIA, France
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- * 
- *********************************************************************/
-
-
 /*
  * THIS SOURCE CODE IS SUPPLIED  ``AS IS'' WITHOUT WARRANTY OF ANY KIND, 
  * AND ITS AUTHOR AND THE JOURNAL OF ARTIFICIAL INTELLIGENCE RESEARCH 
@@ -59,7 +39,7 @@
 
 
 
-Bool ldebug = TRUE;
+Bool ldebug = FALSE;
 
 
 
@@ -121,219 +101,163 @@ void create_and_parse_variables( void )
 
   int digit1, digit2;
 
+  length = MAX_LENGTH;
+  tmp = (char *) malloc (length + 1);
 
-  
   /* run FD translator
    */
-  sprintf(command, "./GENERATE-VARS/generate-vars %s %s > BLA", gops_file, gfct_file);
-  system( command );
+  if ( gcmd_line.use_FD ) {
+    sprintf(command, "./GENERATE-VARS/generate-vars %s %s > BLA", gops_file, gfct_file);
+    system( command );
+  }
 
-  /* Step 1: just count the vars
-   */
-  if ( (f = fopen( "./GENERATE-VARS/VARIABLES.txt", "r")) == NULL ) {
-    printf("\nCan't open VARIABLES.txt file!\n\n");
+  if ( (f = fopen(gcmd_line.fdr_path, "r")) == NULL ) {
+    printf("\nCan't open finite-domain variables file!\n\n");
     exit(1);
   }
-  var = -1;
-  while ( !feof(f) ) {
-    /* get the next line
-     */
-    length = MAX_LENGTH;
-    tmp = (char *) malloc (length + 1);
-    getline(&tmp, &length, f);
-    if ( strlen(tmp) == 0 ) {
-      break;
-    }
-    if ( tmp[0] == 'v' ) {
-      var++;
-      sscanf(tmp, "var%d:", &parsed_var); 
-      if ( ldebug ) {
-/* 	printf("Variable parsed: %d\n", parsed_var); */
-	if ( parsed_var != var ) {
-	  printf("\nparsed_var != var?\n\n");
-	  exit(1);
-	}
-      }
-      continue;
-    }
-  }
-  fclose(f);
-  num_vars = var+1;
-
-  /* Step 2: count the vals
+  /* get the number of vars
    */
+  getline(&tmp, &length, f);
+  while ( strcmp(tmp, "end_metric\n") != 0 ) getline(&tmp, &length, f);
+  getline(&tmp, &length, f);
+  sscanf(tmp, "%d", &num_vars); 
+  /* printf("Number of vars: %d\n\n", num_vars); */
+  /* exit (1); */
+
   num_vals = ( int * ) calloc(num_vars, sizeof(int));
-  if ( (f = fopen( "./GENERATE-VARS/VARIABLES.txt", "r")) == NULL ) {
-    printf("\nCan't open VARIABLES.txt file!\n\n");
-    exit(1);
-  }
-  var = -1;
-  val = 0;
-  while ( !feof(f) ) {
-    length = MAX_LENGTH;
-    tmp = (char *) malloc (length + 1);
-    getline(&tmp, &length, f);
-    if ( strlen(tmp) == 0 ) {
-      break;
-    }
-    if ( tmp[0] == 'v' ) {
-      if ( var >= 0 ) {
-	num_vals[var] = val;
-/* 	if ( ldebug ) { */
-/* 	  printf("Variable %d has %d values\n", var, num_vals[var]); */
-/* 	} */
-      }
-      var++;
-      val = 0;
-      continue;
-    }
-    val++;
-  }
-  num_vals[var] = val;
-/*   if ( ldebug ) { */
-/*     printf("Variable %d has %d values\n", var, num_vals[var]); */
-/*   } */
-  fclose(f);
-
-  /* Step 3: count the args
-   */
-  num_args = ( int ** ) calloc(num_vars, sizeof(int*));
-  for ( i = 0; i < num_vars; i++ ) {
-    num_args[i] = ( int * ) calloc(num_vals[i], sizeof(int));
-  }
-  if ( (f = fopen( "./GENERATE-VARS/VARIABLES.txt", "r")) == NULL ) {
-    printf("\nCan't open VARIABLES.txt file!\n\n");
-    exit(1);
-  }
-  var = -1;
-  val = 0;
-  while ( !feof(f) ) {
-    length = MAX_LENGTH;
-    tmp = (char *) malloc (length + 1);
-    getline(&tmp, &length, f);
-    if ( strlen(tmp) == 0 ) {
-      break;
-    }
-    if ( tmp[0] == 'v' ) {
-      var++;
-      val = 0;
-      continue;
-    }
-    i = 0;
-    while ( tmp[i] != '('  && tmp[i] != '<' ) i++;
-
-    if ( tmp[i] == '<' ) {
-      /* this is a "<none of those>"..!!
-       * I'll have to assume it's the negation of a usual fact...
-       */
-      num_args[var][val] = 0;
-      val++;
-      continue;
-    }
-
-    num_args[var][val] = 0;
-    if ( tmp[i+1] != ')' ) {
-      while ( TRUE ) {
-	while ( tmp[i] != ',' && tmp[i] != ')' ) i++;
-	if ( tmp[i] == ')' ) break;
-	num_args[var][val]++;
-	i++;
-      }
-      num_args[var][val]++;
-    }
-/*     if ( ldebug ) { */
-/*       printf("Variable %d value %d has %d args\n", var, val, num_args[var][val]); */
-/*     } */
-    val++;
-  }
-  fclose(f);
-
-
-  /* Step 4: parse predicates and args!
-   */
   predicate = ( char *** ) calloc(num_vars, sizeof(char **));
   args = ( char **** ) calloc(num_vars, sizeof(char ***));
+  num_args = ( int ** ) calloc(num_vars, sizeof(int*));
+
+  /* now process the vars one-by-one
+   */
   for ( i = 0; i < num_vars; i++ ) {
+    getline(&tmp, &length, f);
+
+    while ( strcmp(tmp, "begin_variable\n") != 0 ) getline(&tmp, &length, f);
+    getline(&tmp, &length, f); /* var name, skip */
+    getline(&tmp, &length, f); /* var axiom layer, skip */
+
+    /* get number of values
+     */
+    getline(&tmp, &length, f);
+    sscanf(tmp, "%d", &(num_vals[i])); 
+    
     predicate[i] = ( char ** ) calloc(num_vals[i], sizeof(char *));
     args[i] = ( char *** ) calloc(num_vals[i], sizeof(char **));
+    num_args[i] = ( int * ) calloc(num_vals[i], sizeof(int));
     for ( j = 0; j < num_vals[i]; j++) {
       predicate[i][j] = (char *) malloc(MAX_LENGTH);
+    }
+
+    /* get the values
+     */
+    for ( j = 0; j < num_vals[i]; j++) {
+      getline(&tmp, &length, f); /* tmp now is a line a la "Atom at(ball1, rooma)" */
+
+      /* count the args
+       */
+      num_args[i][j] = 0;
+      l = 0;
+      if ( tmp[l] == 'N' ) {
+	/* This is a "NegatedAtom". These did not exist when I
+	   implemented my first parser. Simply ignore and pretend they
+	   were still "<none of those>".
+	*/
+      } else {
+	while ( tmp[l] != '('  && tmp[l] != '<' ) l++;
+	if ( tmp[l] == '<' ) {
+	  /* this is a "<none of those>"
+	   */
+	} else {
+	  /* regular fact, count arguments
+	   */
+	  if ( tmp[l+1] != ')' ) {
+	    while ( TRUE ) {
+	      while ( tmp[l] != ',' && tmp[l] != ')' ) l++;
+	      num_args[i][j]++;
+	      if ( tmp[l] == ')' ) break;
+	      l++;
+	    }
+	  }
+	}
+      } /* endelse processing something other than a "NegatedAtom" */
+
       args[i][j] = ( char ** ) calloc(num_args[i][j], sizeof(char *));
       for ( k = 0; k < num_args[i][j]; k++ ) {
 	args[i][j][k] = (char *) malloc(MAX_LENGTH);
       }
-    }
-  }
-  if ( (f = fopen( "./GENERATE-VARS/VARIABLES.txt", "r")) == NULL ) {
-    printf("\nCan't open VARIABLES.txt file!\n\n");
-    exit(1);
-  }
-  var = -1;
-  val = 0;
-  while ( !feof(f) ) {
-    length = MAX_LENGTH;
-    tmp = (char *) malloc (length + 1);
-    getline(&tmp, &length, f);
-    if ( strlen(tmp) == 0 ) {
-      break;
-    }
-    if ( tmp[0] == 'v' ) {
-      var++;
-      val = 0;
-      continue;
-    }
+      
+      l = 0;
 
-    i = 0;
-    while ( tmp[i] != 'm' && tmp[i] != '<' ) i++;
-
-    if ( tmp[i] == '<' ) {
-      /* this is a "<none of those>"..!!
-       * I'll have to assume it's the negation of a usual fact...
-       */
-      sprintf(predicate[var][val], "NONE");
-      val++;
-      continue;
-    }
-
-    i++;
-    i++;
-    /* now we're at start of predicate name 
-     */
-    get_name(tmp, i, predicate[var][val]);
-
-    arg = 0;
-    while ( tmp[i] != '(' ) i++;
-    i++;
-    if ( tmp[i] != ')' ) {
-      while ( TRUE ) {
-	get_name(tmp, i, args[var][val][arg]);
-	arg++;
-	while ( tmp[i] != ',' && tmp[i] != ')' ) i++;
-	if ( tmp[i] == ')' ) break;
-	i++;
-	while ( tmp[i] == ' ' ) i++;
+      if ( tmp[l] == 'N' ) {
+	/* This is a "NegatedAtom". These did not exist when I
+	   implemented my first parser. Simply ignore and pretend they
+	   were still "<none of those>".
+	*/
+	sprintf(predicate[i][j], "NONE");
+	continue;
       }
-    }
-    val++;
-  }
-  fclose(f);
-/*   if ( ldebug ) { */
-/*     printf("\n\nParsed Variables:\n"); */
-/*     for ( i = 0; i < num_vars; i++ ) { */
-/*       printf("Variable %d:\n", i); */
-/*       for ( j = 0; j < num_vals[i]; j++) { */
-/* 	printf("Value %d: %s(", j, predicate[i][j]); */
-/* 	for ( k = 0; k < num_args[i][j]; k++ ) { */
-/* 	  printf("%s", args[i][j][k]); */
-/* 	  if ( k < num_args[i][j]-1 ) printf(", "); */
-/* 	} */
-/* 	printf(")\n"); */
-/*       } */
-/*     } */
-/*   } */
-/*   fflush(stdout); */
+    
+      while ( tmp[l] != 'm' && tmp[l] != '<' ) l++;
+      
+      if ( tmp[l] == '<' ) {
+	/* this is a "<none of those>"
+	 */
+	sprintf(predicate[i][j], "NONE");
+	continue;
+      }
 
-  
+      /* regular fact, get arguments
+       */
+      l++;
+      l++;
+      /* now we're at start of predicate name 
+       */
+      get_name(tmp, l, predicate[i][j]);
+      
+      while ( tmp[l] != '(' ) l++;
+      l++;
+      for ( k = 0; k < num_args[i][j]; k++ ) {
+	/* invariant: we're at start of k-th argument
+	 */
+	get_name(tmp, l, args[i][j][k]);
+	if ( k < num_args[i][j] - 1 ) {
+	  while ( tmp[l] != ',' && tmp[l] != ')' ) l++;
+	  if ( tmp[l] == ')' ) {
+	    printf("\n\nERROR: tmp[l] == ')'\n\n");
+	    exit(1);
+	  } 
+	  l++;
+	  while ( tmp[l] == ' ' ) l++;
+	}
+
+      } /* endfor k over values of var i val j */
+
+    } /* endfor j over values of var i */
+
+    getline(&tmp, &length, f);
+    while ( strcmp(tmp, "end_variable\n") != 0 ) getline(&tmp, &length, f);
+
+  } /* endfor i over vars */
+
+
+
+  /* printf("\n\nParsed Variables:\n"); */
+  /* for ( i = 0; i < num_vars; i++ ) { */
+  /*   printf("Variable %d:\n", i); */
+  /*   for ( j = 0; j < num_vals[i]; j++) { */
+  /*     printf("Value %d: %s(", j, predicate[i][j]); */
+  /*     for ( k = 0; k < num_args[i][j]; k++ ) { */
+  /* 	printf("%s", args[i][j][k]); */
+  /* 	if ( k < num_args[i][j]-1 ) printf(", "); */
+  /*     } */
+  /*     printf(")\n"); */
+  /*   } */
+  /* } */
+  /* fflush(stdout); */
+  /* exit(1); */
+
 
   /* Now create the global Variables!
    */
@@ -411,42 +335,44 @@ void create_and_parse_variables( void )
     }
   }
 
-/*   if ( ldebug ) { */
-/*     printf("\n\n========================Variables from Fast Downward:\n"); */
-/*     for ( i = 0; i < num_vars; i++ ) { */
-/*       printf("Variable %d:\n", i); */
-/*       for ( j = 0; j < num_vals[i]; j++) { */
-/* 	print_Variable_Value(i, j, FALSE); */
-/* 	printf("\n"); */
-/*       } */
-/*     } */
-/*   } */
 
 
-  /* read the time taken by FD!
-   */
-  if ( (f = fopen( "./BLA", "r")) == NULL ) {
-    printf("\nCan't open FD BLA file!\n\n");
-    exit(1);
+  /* Joerg2014: disabling the recording of runtime taken by FD. not
+     relevant in our context, and I don't wanna bother adpting this
+     parser as well.
+  */
+  gFDvariables_time = 0;
+  if ( gcmd_line.use_FD ) {
+    sprintf(command, "rm ./BLA");
+    system( command );
   }
-  while ( !feof(f) ) {
-    length = MAX_LENGTH;
-    tmp = (char *) malloc (length + 1);
-    getline(&tmp, &length, f);
-    if ( tmp[0] == 'D' && 
-	 tmp[1] == 'o' &&
-	 tmp[2] == 'n' &&
-	 tmp[3] == 'e' &&
-	 tmp[4] == '!' ) {
-      break;
-    }
-  }
-  sscanf(tmp, "Done! [%f", &gFDvariables_time);
-  fclose(f);
-
-  sprintf(command, "rm ./BLA ./GENERATE-VARS/VARIABLES.txt");
-  system( command );
-
+  /* if ( gcmd_line.use_FD ) { */
+  /*   /\* read the time taken by FD! */
+  /*    *\/ */
+  /*   if ( (f = fopen( "./BLA", "r")) == NULL ) { */
+  /*     printf("\nCan't open FD BLA file!\n\n"); */
+  /*     exit(1); */
+  /*   } */
+  /*   while ( !feof(f) ) { */
+  /*     length = MAX_LENGTH; */
+  /*     tmp = (char *) malloc (length + 1); */
+  /*     getline(&tmp, &length, f); */
+  /*     if ( tmp[0] == 'D' && */
+  /* 	   tmp[1] == 'o' && */
+  /* 	   tmp[2] == 'n' && */
+  /* 	   tmp[3] == 'e' && */
+  /* 	   tmp[4] == '!' ) { */
+  /* 	break; */
+  /*     } */
+  /*   } */
+  /*   sscanf(tmp, "Done! [%f", &gFDvariables_time); */
+  /*   fclose(f); */
+    
+  /*   sprintf(command, "rm ./BLA"); */
+  /*   system( command ); */
+  /* } else { */
+  /*   gFDvariables_time = 0; */
+  /* } */
 
 
   /* as a final step here, find some (hopefully) useful name for each
@@ -684,9 +610,11 @@ void create_ft_op_indices( void )
        * analysis... dunno. just mark this guy, and exclude it at
        * those places where we try to go from ftconn into varvals.
        */
-      printf("\nWarning: didn't find variable value for FF ft ");
-      print_ft_name(i);
-      printf(". Skipping the fact from variables structures.");
+      if ( gcmd_line.display_info == 2 ) {
+	printf("\nWarning: didn't find variable value for FF ft ");
+	print_ft_name(i);
+	printf(". Skipping the fact from variables structures.");
+      }
       gft_conn[i].notFD = TRUE;
     }
     gft_conn[i].var = var;
@@ -813,9 +741,20 @@ void create_ft_op_indices( void )
       
       for ( j = 0; j < gop_conn[op].num_pre; j++ ) {
 	if ( gop_conn[op].pre[j].var == delvar ) {
+	  /* Joerg2014: This case occured, with the new FD translator,
+	     in philosophers. No idea what the reason is. I suppose an
+	     action might explicitly delete more than one value of a
+	     FD variable?
+	  */
 	  if ( gop_conn[op].pre[j].val != delval ) {
-	    printf("\n\nVarVal sanity: deleted val of var != pre val of var?\n\n");
-	    exit(1);
+	    if ( gcmd_line.display_info == 2 ) {
+	      printf("\n\nWarning: VarVal sanity: deleted val of var != pre val of var? op: ");
+	      print_op_name(op);
+	      printf("; fact: ");
+	      print_ft_name(delft);
+	      printf("\n\n");
+	    }
+	    continue;
 	  }
 	  break;
 	}
@@ -3179,25 +3118,6 @@ Bool SG_INsubgraph_acyclic( void )
 	  continue;
 	}
 	if ( i == k ) {
-	  if ( gdo_negative_diagnosis ) {
-	    /* record this cycle for diagnosis!
-	     */
-	    if ( gchecking_acyclic_for == 3 ) {/* checking for oDG+ */
-	      for ( k = 0; k < goDGplus_num_cycle_vars; k++ ) {
-		if ( goDGplus_cycle_vars[k] == i ) {
-		  break;
-		}
-	      }
-	      if ( k == goDGplus_num_cycle_vars ) {
-		goDGplus_cycle_vars[goDGplus_num_cycle_vars] = i;
-		goDGplus_cycle_vars_weights[goDGplus_num_cycle_vars] = 1;
-		goDGplus_num_cycle_vars++;
-	      } else {
-		goDGplus_cycle_vars_weights[k]++;
-	      }
-	    }
-	  }
-	  
 	  for ( i = 0; i < num_IN_SGedges; i++ ) {
 	    gSG.IN_adj_matrix[IN_SGedge_pres[i]][IN_SGedge_effs[i]] = FALSE; 
 	  }
@@ -3553,8 +3473,6 @@ Bool SG_DTGs_oDGplus_INsubgraph_nonleafs_qualifies( int var0 )
   Operator *my_o;
   DTGNode *seff;
 
-
-
   for ( var = 0; var < gSG.num_nodes; var++ ) {
 
     if ( !gSG.nodes[var].IN ) {
@@ -3577,11 +3495,20 @@ Bool SG_DTGs_oDGplus_INsubgraph_nonleafs_qualifies( int var0 )
 	exit(1);
       }
 
+      /* Joerg2014: Stats here the positive reason why it worked?
+	 (negative reason ie for failure not interesting stats as then
+	 all alternate conditions must have failed).
+      */
+      if ( (t->invertible || t->induced) && t->no_side_effects ) {
+	goDGplus_num_succ_nonleavesDTGtnoseff++;
+      }
+      if ( t->irrelevant_own_delete && t->self_irrelevant_side_effect_deletes ) {
+	goDGplus_num_succ_nonleavesDTGtirrdel++;
+      }
+
       if ( !t->irrelevant &&
 	   !((t->invertible || t->induced) && t->no_side_effects) &&
 	   !(t->irrelevant_own_delete && t->self_irrelevant_side_effect_deletes) ) {
-
-
 
 	if ( (t->invertible || t->induced) && t->irrelevant_side_effect_deletes ) {
 	  /* we might still be good, provided the guy has no seff on V \ x0. test this!
@@ -3596,14 +3523,13 @@ Bool SG_DTGs_oDGplus_INsubgraph_nonleafs_qualifies( int var0 )
 	    }
 	  }
 	  if ( j == t->num_side_effects ) {
-	    /* continue with the next transition!
+	    /* Ok! continue with the next transition!
 	     */
+	    goDGplus_num_succ_nonleavesDTGtirrseffdel++;
+	    goDGplus_num_succ_nonleavesDTGt++;
 	    continue;
 	  }
-
 	}
-     
-
 
 	if ( gcmd_line.display_info == 2 ) {
 	  printf("\nbad oDTG+ transition on var ");
@@ -3612,55 +3538,10 @@ Bool SG_DTGs_oDGplus_INsubgraph_nonleafs_qualifies( int var0 )
 	  print_DTGTransition(t, FALSE);
 	}
 
-	if ( gdo_negative_diagnosis ) {
-	  if ( t->invertible || t->induced ) {
-	    /* record each side effect var, with this rop!
-	     */
-	    my_a = gop_conn[t->rop].action;
-	    if ( my_a->norm_operator ) {
-	      my_o = my_a->norm_operator->operator;
-	    } else {
-	      if ( my_a->pseudo_action ) {
-		my_o = my_a->pseudo_action->operator;
-	      } else {
-		printf("\nmy_a has neither norm op nor pseudo act??\n\n");
-		exit(1);
-	      }
-	    }
-	    for ( j = 0; j < t->num_side_effects; j++ ) {
-	      for ( k = 0; k < goDGplus_num_nonleafbadtranss; k++ ) {
-		if ( goDGplus_nonleafbadtrans_seffvars[k] == t->side_effects[j]->var &&
-		     goperators[goDGplus_nonleafbadtrans_rops[k]] == my_o ) {
-		  break;
-		}
-	      }
-	      if ( k == goDGplus_num_nonleafbadtranss ) {
-		goDGplus_nonleafbadtrans_seffvars[goDGplus_num_nonleafbadtranss] = 
-		  t->side_effects[j]->var;
-		for ( l = 0; l < gnum_operators; l++ ) {
-		  if ( goperators[l] == my_o ) {
-		    break;
-		  }
-		}
-		if ( l == gnum_operators ) {
-		  printf("\ndidn't find my_o operator??\n\n");
-		  exit(1);
-		}
-		goDGplus_nonleafbadtrans_rops[goDGplus_num_nonleafbadtranss] = l;
-		goDGplus_nonleafbadtranss_weights[goDGplus_num_nonleafbadtranss] = 1;
-		goDGplus_num_nonleafbadtranss++;
-	      } /* endif did not record this one yet */ else {
-		goDGplus_nonleafbadtranss_weights[k]++;
-	      }
-
-	    } /* endfor j over seffs for diagnosis */
-	      
-	  } /* endif diagnose only of t is invertible or induced */
-
-	} /* endif do negative diagnosis */
-
 	return FALSE;
-      } /* endif transition is bad */
+      } /* endif transition is bad */ else {
+	goDGplus_num_succ_nonleavesDTGt++;
+      }
 
     } /* endfor i, t over transitions */
 

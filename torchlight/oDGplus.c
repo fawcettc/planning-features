@@ -20,6 +20,24 @@
  *********************************************************************/
 
 
+/*
+ * THIS SOURCE CODE IS SUPPLIED  ``AS IS'' WITHOUT WARRANTY OF ANY KIND, 
+ * AND ITS AUTHOR AND THE JOURNAL OF ARTIFICIAL INTELLIGENCE RESEARCH 
+ * (JAIR) AND JAIR'S PUBLISHERS AND DISTRIBUTORS, DISCLAIM ANY AND ALL 
+ * WARRANTIES, INCLUDING BUT NOT LIMITED TO ANY IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND
+ * ANY WARRANTIES OR NON INFRINGEMENT.  THE USER ASSUMES ALL LIABILITY AND
+ * RESPONSIBILITY FOR USE OF THIS SOURCE CODE, AND NEITHER THE AUTHOR NOR
+ * JAIR, NOR JAIR'S PUBLISHERS AND DISTRIBUTORS, WILL BE LIABLE FOR 
+ * DAMAGES OF ANY KIND RESULTING FROM ITS USE.  Without limiting the 
+ * generality of the foregoing, neither the author, nor JAIR, nor JAIR's
+ * publishers and distributors, warrant that the Source Code will be 
+ * error-free, will operate without interruption, or will meet the needs 
+ * of the user.
+ */
+
+
+
 /*********************************************************************
  * File: oDGplus.c
  *
@@ -114,6 +132,7 @@ Bool ldo_record_var0;
 
 
 
+
 void analyze_local_oDGplus( State *s )
 
 {
@@ -140,9 +159,13 @@ void analyze_local_oDGplus( State *s )
   Operator *my_o;
 
   int eff, ftt;
+
+  /* Joerg2014: new flag, to remember that one of the 3 criteria
+     failed, while continuing in order to keep stats on which of the
+     others would fail as well.
+  */
+  Bool failed;
   
-
-
   if ( fc ) {
     lPplus_of_s = ( int * ) calloc( gnum_op_conn, sizeof( int ));
     lreordered_Pplus_of_s = ( int * ) calloc( gnum_op_conn, sizeof( int ));
@@ -151,30 +174,26 @@ void analyze_local_oDGplus( State *s )
 
     make_state( &ls, gnum_ft_conn );
 
+    /* Joerg2014: new count, to measure stats at attempt-level as
+       opposed to sample-state level 
+    */    
+    goDGplus_num_graphs = 0; 
+
     goDGplus_num_successes = 0;
-    goDGplus_num_failures = 0;
 
-    goDGplus_responsible_pred0s = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    goDGplus_responsible_op0s = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    goDGplus_responsible_op0pred0s_weights = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    for ( i = 0; i < gnum_variables * gnum_operators; i++ ) {
-      goDGplus_responsible_op0pred0s_weights[i] = 0;
-    }
-    goDGplus_num_responsible_op0pred0s = 0;
+    goDGplus_num_fail_cyclic = 0; /* Joerg2014: new feature */
+    goDGplus_num_fail_t0notadequate = 0; /* Joerg2014: new feature */
+    goDGplus_num_fail_nonleavesnotadequate = 0; /* Joerg2014: new feature */
 
-    goDGplus_cycle_vars = ( int * ) calloc( gnum_variables, sizeof( int ));
-    goDGplus_cycle_vars_weights = ( int * ) calloc( gnum_variables, sizeof( int ));
-    for ( i = 0; i < gnum_variables; i++ ) {
-      goDGplus_cycle_vars_weights[i] = 0;
-    }
-    goDGplus_num_cycle_vars = 0;
+    goDGplus_num_succ_t0 = 0; /* Joerg2014: new feature */
+    goDGplus_num_succ_t0adequateRFCempty = 0; /* Joerg2014: new feature */
+    goDGplus_num_succ_t0adequateRFCrecovered = 0; /* Joerg2014: new feature */
 
-/*     goDGplus_nonrecovered_RFC_intersect = ( int * )  */
-/*       calloc( gnum_ft_conn, sizeof( int )); */
-/*     goDGplus_num_nonrecovered_RFC_intersect = 0; */
+    goDGplus_num_succ_nonleavesDTGt = 0; /* Joerg2014: new feature */
+    goDGplus_num_succ_nonleavesDTGtnoseff = 0; /* Joerg2014: new feature */
+    goDGplus_num_succ_nonleavesDTGtirrdel = 0; /* Joerg2014: new feature */
+    goDGplus_num_succ_nonleavesDTGtirrseffdel = 0; /* Joerg2014: new feature */
+
     goDGplus_nonrecovered_RFC_intersect_preds = ( int * ) 
       calloc(gnum_variables * gnum_operators, sizeof( int ));
     goDGplus_nonrecovered_RFC_intersect_op0s = ( int * ) 
@@ -187,29 +206,6 @@ void analyze_local_oDGplus( State *s )
     goDGplus_num_nonrecovered_RFC_intersects = 0;
     goDGplus_nonrecovered_RFC_intersects_totalweight = 0;
 
-    gOLD_oDGplus_nonrecovered_RFC_intersect_vars = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    gOLD_oDGplus_nonrecovered_RFC_intersect_op0s = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    gOLD_oDGplus_nonrecovered_RFC_intersects_weights = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    for ( i = 0; i < gnum_variables * gnum_operators; i++ ) {
-      gOLD_oDGplus_nonrecovered_RFC_intersects_weights[i] = 0;
-    }
-    gOLD_oDGplus_num_nonrecovered_RFC_intersects = 0;
-    gOLD_oDGplus_nonrecovered_RFC_intersects_totalweight = 0;
-
-    goDGplus_nonleafbadtrans_seffvars = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    goDGplus_nonleafbadtrans_rops = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    goDGplus_nonleafbadtranss_weights = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    for ( i = 0; i < gnum_variables * gnum_operators; i++ ) {
-      goDGplus_nonleafbadtranss_weights[i] = 0;
-    }
-    goDGplus_num_nonleafbadtranss = 0;
-
     fc = FALSE;
   }
 
@@ -220,7 +216,6 @@ void analyze_local_oDGplus( State *s )
   gsuccess = FALSE;
   ged_bound = -1;
   gdead_end = FALSE;
-
 
 
   /* First, of all, get a relaxed plan. If none exists, nothing to do
@@ -388,50 +383,42 @@ void analyze_local_oDGplus( State *s )
 	continue;
       }
 
-      /* if so wished, remember for diagnosis whether this is a useful var0
-       *
-       * ... also, if so wished, don't even analyze non-useful var0!
+      /* Joerg2014: The default was to NOT prune useless var0. I got
+	 no idea why. I set it to TRUE now; this plays a role in the
+	 stats below ie the diagnosis of failure, which should be done
+	 only for non-useless var0. In case this test here is turned
+	 off ie useless var0 are being processed, need to take care to
+	 not use them in diagnosis below (original code does so via
+	 "ldo_record_var0" flag).
        */
-      ldo_record_var0 = TRUE;
-      if ( gcmd_line.prune_useless_var0 ||
-	   (gcmd_line.do_diagnose && gcmd_line.diagnose_prune_useless_var0) ) {
+      /* if ( gcmd_line.prune_useless_var0 ) { */
 	/* is this effect a goal in the rest of rplan?
 	 */
-	ftt = gvariables[gop_conn[op0].eff[i].var].vals[gop_conn[op0].eff[i].val];
-	if ( ftt == -1 ) {
-	  if ( gcmd_line.do_diagnose && gcmd_line.diagnose_prune_useless_var0 ) {
-	    ldo_record_var0 = FALSE;
+      ftt = gvariables[gop_conn[op0].eff[i].var].vals[gop_conn[op0].eff[i].val];
+      if ( ftt == -1 ) {
+	continue;
+      }
+      if ( !gft_conn[ftt].is_global_goal ) {
+	for ( j = ind0+1; j < lnum_Pplus_of_s; j++ ) {
+	  if ( gop_conn[lPplus_of_s[j]].num_E == 0 ) {
+	    printf("\ngop_conn[lPplus_of_s[j]].num_E == 0??\n\n");
+	    exit(1);
 	  }
-	  if ( gcmd_line.prune_useless_var0 ) {
-	    continue;
-	  }
-	}
-	if ( !gft_conn[ftt].is_global_goal ) {
-	  for ( j = ind0+1; j < lnum_Pplus_of_s; j++ ) {
-	    if ( gop_conn[lPplus_of_s[j]].num_E == 0 ) {
-	      printf("\ngop_conn[lPplus_of_s[j]].num_E == 0??\n\n");
-	      exit(1);
-	    }
-	    eff = gop_conn[lPplus_of_s[j]].E[0];
-	    for ( k = 0; k < gef_conn[eff].num_PC; k++ ) {
-	      if ( gef_conn[eff].PC[k] == ftt ) {
-		break;
-	      }
-	    }
-	    if ( k < gef_conn[eff].num_PC ) {
+	  eff = gop_conn[lPplus_of_s[j]].E[0];
+	  for ( k = 0; k < gef_conn[eff].num_PC; k++ ) {
+	    if ( gef_conn[eff].PC[k] == ftt ) {
 	      break;
 	    }
 	  }
-	  if ( j == lnum_Pplus_of_s ) {
-	    if ( gcmd_line.do_diagnose && gcmd_line.diagnose_prune_useless_var0 ) {
-	      ldo_record_var0 = FALSE;
-	    }
-	    if ( gcmd_line.prune_useless_var0 ) {
-	      continue;
-	    }
+	  if ( k < gef_conn[eff].num_PC ) {
+	    break;
 	  }
 	}
+	if ( j == lnum_Pplus_of_s ) {
+	  continue;
+	}
       }
+      /* } */
       
 
       /* yep. find the transition.
@@ -473,7 +460,10 @@ void analyze_local_oDGplus( State *s )
 	continue;
       }
 
-
+      /* Joerg2014: We get here for all t0 which we actually test for
+	 oDGplus construction. Hence count here.
+      */
+      goDGplus_num_graphs++;
 
       /* this op0/var0/t0 needs to be checked! If not already done,
        * taylor the rplan to op0, by moving all ops behind it, as far as
@@ -495,14 +485,23 @@ void analyze_local_oDGplus( State *s )
       }
 
       
-      
+      /* Joerg2014: new flag, to remember that one of the 3 criteria
+	 failed, while continuing in order to keep stats on which of the
+	 others would fail as well.
+      */
+      failed = FALSE;
+
       /* now get the oDGplus for this rplan, op0, var0, t0
        */
       if ( !construct_oDGplus( op0, var0, t0 ) ) {
 	/* got a cycle!
 	 */
-	goDGplus_num_failures++;
-	continue;
+	goDGplus_num_fail_cyclic++; /* Joerg2014: new feature */
+	/* Joerg2014: also execute the two tests below, to be able
+	   to record whether or not they would fail as well
+	*/
+	/* continue; */
+	failed = TRUE;
       }
 
       /* check the needed properties for non-leafs
@@ -514,8 +513,12 @@ void analyze_local_oDGplus( State *s )
 	if ( gcmd_line.display_info == 2 ) {
 	  printf("\nnon-leaf nodes do not qualify!");
 	}
-	goDGplus_num_failures++;
-	continue;
+	goDGplus_num_fail_nonleavesnotadequate++; /* Joerg2014: new feature */
+	/* Joerg2014: also execute the two tests below, to be able
+	   to record whether or not they would fail as well
+	*/
+	/* continue; */
+	failed = TRUE;
       }
 
       /* check whether op0, t0 satisfy point 2 of oDG+ def
@@ -528,12 +531,25 @@ void analyze_local_oDGplus( State *s )
 	if ( gcmd_line.display_info == 2 ) {
 	  printf("\nop0, var0, t0 do not qualify!");
 	}
-	goDGplus_num_failures++;
+	goDGplus_num_fail_t0notadequate++; /* Joerg2014: new feature */
+	/* Joerg2014: do symmetrically to above 2 cases, for clarity.
+	*/
+	/* continue; */
+	failed = TRUE;
+      } else {
+	/* Joerg2014: keep track of how often this criterion was Ok.
+	*/
+	goDGplus_num_succ_t0++;
+      }
+
+      if ( failed ) {
 	continue;
       }
 
       /* this choice of op0, var0, t0 is successful!
        */
+      goDGplus_num_successes++;
+
       nolm = TRUE;
       max_ed_bound = TRUE;
       new_ed_bound = SG_DTGs_oDGplus_INsubgraph_dcost( var0 );
@@ -574,55 +590,8 @@ void analyze_local_oDGplus( State *s )
 
   } /* ind0, op0 over selection of op0 in rplan for s */
 
-
-
   if ( nolm ) {
     gsuccess = TRUE;
-    goDGplus_num_successes++;
-
-    if ( ldo_record_var0 ) {
-      ftt = gvariables[responsible_t0->end->var].vals[responsible_t0->end->val];
-
-      if ( ftt != -1 ) {
-	responsible_pred0 = grelevant_facts[ftt].predicate;
-
-	my_a = gop_conn[responsible_op0].action;
-	if ( my_a->norm_operator ) {
-	  my_o = my_a->norm_operator->operator;
-	} else {
-	  if ( my_a->pseudo_action ) {
-	    my_o = my_a->pseudo_action->operator;
-	  } else {
-	    printf("\nmy_a has neither norm op nor pseudo act??\n\n");
-	    exit(1);
-	  }
-	}
-	for ( i = 0; i < goDGplus_num_responsible_op0pred0s; i++ ) {
-	  if ( goDGplus_responsible_pred0s[i] == responsible_pred0 &&
-	       goperators[goDGplus_responsible_op0s[i]] == my_o ) {
-	    break;
-	  }
-	}
-	if ( i == goDGplus_num_responsible_op0pred0s ) {
-	  goDGplus_responsible_pred0s[goDGplus_num_responsible_op0pred0s] = responsible_pred0;
-	  for ( j = 0; j < gnum_operators; j++ ) {
-	    if ( goperators[j] == my_o ) {
-	      break;
-	    }
-	  }
-	  if ( j == gnum_operators ) {
-	    printf("\ndidn't find my_o operator??\n\n");
-	    exit(1);
-	  }
-	  goDGplus_responsible_op0s[goDGplus_num_responsible_op0pred0s] = j;
-	  goDGplus_responsible_op0pred0s_weights[goDGplus_num_responsible_op0pred0s] = 1;
-	  goDGplus_num_responsible_op0pred0s++;
-	} else {
-	  goDGplus_responsible_op0pred0s_weights[i]++;
-	}
-      } /* endif t0->end is real ft */
-    } /* endif should record this guy */
-
   }
 
   if ( max_ed_bound ) {
@@ -1182,20 +1151,25 @@ Bool construct_oDGplus( int op0, int var0, DTGTransition *t0 )
 	    IN_DTGnodes[num_IN_DTGnodes++] = t->end;
 	  }
 
-	  /* will this t definitely break the non-leaf conditions?
-	   * (simple sufficient test, do full test later since then
-	   * we'll know exactly who is invertible and who is
-	   * induced...)
-	   */
-	  if ( !(t->irrelevant_own_delete && t->self_irrelevant_side_effect_deletes) &&
-	       !t->irrelevant_side_effect_deletes ) {
-	    /* yep this is BAD. stop right here.
-	     */
-	    if ( gcmd_line.display_info == 2 ) {
-	      printf("\nbad nonleaf oDTG+ transition!");
-	    }
-	    return FALSE;
-	  }
+	  /* Joerg2014: Commented this test out as it will dilute our
+	     statistics: we want stats why oDGplus failed, and this
+	     function here is supposed to say "fail" iff there is a
+	     cycle.
+	  */
+	  /* /\* will this t definitely break the non-leaf conditions? */
+	  /*  * (simple sufficient test, do full test later since then */
+	  /*  * we'll know exactly who is invertible and who is */
+	  /*  * induced...) */
+	  /*  *\/ */
+	  /* if ( !(t->irrelevant_own_delete && t->self_irrelevant_side_effect_deletes) && */
+	  /*      !t->irrelevant_side_effect_deletes ) { */
+	  /*   /\* yep this is BAD. stop right here. */
+	  /*    *\/ */
+	  /*   if ( gcmd_line.display_info == 2 ) { */
+	  /*     printf("\nbad nonleaf oDTG+ transition!"); */
+	  /*   } */
+	  /*   return FALSE; */
+	  /* } */
 
 	  if ( t->invertible &&
 	       !t->inverted_by->irrelevant ) {
@@ -1217,17 +1191,22 @@ Bool construct_oDGplus( int op0, int var0, DTGTransition *t0 )
 	      t->inverted_by->induced = TRUE;
 	    }
 
-	    /* does t->inverted_by definitely break the non-leaf conditions?
-	     */
-	    if ( !(t->inverted_by->irrelevant_own_delete && t->inverted_by->self_irrelevant_side_effect_deletes) &&
-		 !t->inverted_by->irrelevant_side_effect_deletes ) {
-	      /* yep this is BAD. stop right here.
-	       */
-	      if ( gcmd_line.display_info == 2 ) {
-		printf("\nbad nonleaf oDTG+ transition!");
-	      }
-	      return FALSE;
-	    }
+	    /* Joerg2014: Commented this test out as it will dilute our
+	       statistics: we want stats why oDGplus failed, and this
+	       function here is supposed to say "fail" iff there is a
+	       cycle.
+	    */
+	    /* /\* does t->inverted_by definitely break the non-leaf conditions? */
+	    /*  *\/ */
+	    /* if ( !(t->inverted_by->irrelevant_own_delete && t->inverted_by->self_irrelevant_side_effect_deletes) && */
+	    /* 	 !t->inverted_by->irrelevant_side_effect_deletes ) { */
+	    /*   /\* yep this is BAD. stop right here. */
+	    /*    *\/ */
+	    /*   if ( gcmd_line.display_info == 2 ) { */
+	    /* 	printf("\nbad nonleaf oDTG+ transition!"); */
+	    /*   } */
+	    /*   return FALSE; */
+	    /* } */
 
 	  } /* endif t has relevant inverse transition */
 	} /* endfor j, t over transitions made by op due to this effect */
@@ -1401,8 +1380,6 @@ Bool construct_oDGplus( int op0, int var0, DTGTransition *t0 )
 
   } /* endfor current_ind, current_op backwards from op0 */
 
-
-  gchecking_acyclic_for = 3;
   result = SG_INsubgraph_acyclic();
 
   if ( gcmd_line.display_info == 2 ) {
@@ -1780,6 +1757,7 @@ int op0_var0_t0_qualification( int op0, int var0, DTGTransition *t0 )
 	printf("\ncriterion (2a) applies!");
       }
       result = 1;
+      goDGplus_num_succ_t0adequateRFCempty++; /* Joerg2014: new feature */
 
       /* this will already give the best possible bound. undo booleans
        * made so far, and return.
@@ -1792,8 +1770,6 @@ int op0_var0_t0_qualification( int op0, int var0, DTGTransition *t0 )
       return result;
     }
   }
-
-
 
   /* same goes for (c):
    *
@@ -2001,6 +1977,7 @@ int op0_var0_t0_qualification( int op0, int var0, DTGTransition *t0 )
       printf("\ncriterion (2a) applies: empty RFC_intersect!");
     }
     result = 1;
+    goDGplus_num_succ_t0adequateRFCempty++; /* Joerg2014: new feature */
 
     /* need to undo Booleans!
      */
@@ -2285,15 +2262,7 @@ If $\op_0 \in P^+(s)$ and $V \subseteq \vars$, then by $S_{\geq
 
     failure = TRUE;
     
-    if ( !ldo_record_var0 ) {
-      /* is not sensible since this is not an intuitive x0; this
-       * flag has been set above already
-       */
-      continue;
-    }
-    
-    if ( gcmd_line.replacement_level != 0 || /* we're gonna analyze below */
-	 !gdo_negative_diagnosis ) {
+    if ( gcmd_line.replacement_level != 0 /* we're gonna analyze below */ ) {
       continue;
     }
     
@@ -2417,35 +2386,6 @@ If $\op_0 \in P^+(s)$ and $V \subseteq \vars$, then by $S_{\geq
       goDGplus_nonrecovered_RFC_intersects_totalweight += 1; 
     }
 
-    /* OLD version, with vars
-     */
-    for ( j = 0; j < gOLD_oDGplus_num_nonrecovered_RFC_intersects; j++ ) {
-      if ( gOLD_oDGplus_nonrecovered_RFC_intersect_vars[j] == RFC_intersect[i]->var &&
-	   goperators[gOLD_oDGplus_nonrecovered_RFC_intersect_op0s[j]] == my_o ) {
-	break;
-      }
-    }
-    if ( j == gOLD_oDGplus_num_nonrecovered_RFC_intersects ) {
-      gOLD_oDGplus_nonrecovered_RFC_intersect_vars[gOLD_oDGplus_num_nonrecovered_RFC_intersects] = 
-	RFC_intersect[i]->var;
-      for ( k = 0; k < gnum_operators; k++ ) {
-	if ( goperators[k] == my_o ) {
-	  break;
-	}
-      }
-      if ( k == gnum_operators ) {
-	printf("\ndidn't find my_o operator??\n\n");
-	exit(1);
-      }
-      gOLD_oDGplus_nonrecovered_RFC_intersect_op0s[gOLD_oDGplus_num_nonrecovered_RFC_intersects] = k;
-      gOLD_oDGplus_nonrecovered_RFC_intersects_weights[gOLD_oDGplus_num_nonrecovered_RFC_intersects] = 1; 
-      gOLD_oDGplus_nonrecovered_RFC_intersects_totalweight += 1; 
-      gOLD_oDGplus_num_nonrecovered_RFC_intersects++;
-    } else { /* did find record j! */
-      gOLD_oDGplus_nonrecovered_RFC_intersects_weights[j] += 1; 
-      gOLD_oDGplus_nonrecovered_RFC_intersects_totalweight += 1; 
-    }
-
   } /* endfor i over RFC intersect */
 
   if ( !failure ) {
@@ -2453,6 +2393,7 @@ If $\op_0 \in P^+(s)$ and $V \subseteq \vars$, then by $S_{\geq
       printf("\ncriterion (2a) applies: RFC_intersect is recovered!");
     }
     result = 1;
+    goDGplus_num_succ_t0adequateRFCrecovered++; /* Joerg2014: new feature */
 
     /* need to undo Booleans!
      */
@@ -3143,17 +3084,6 @@ If $\op_0 \in P^+(s)$ and $V \subseteq \vars$, then by $S_{\geq
 
     failure = TRUE;
     
-    if ( !ldo_record_var0 ) {
-      /* is not sensible since this is not an intuitive x0; this
-       * flag has been set above already
-       */
-      continue;
-    }
-    
-    if ( !gdo_negative_diagnosis ) {
-      continue;
-    }
-    
     /* if this is var0, ie, the delete of t0, and if t0 is
      * invertible, then don't record it -- such a failure is just
      * because this is not what we should be doing, with this
@@ -3274,35 +3204,6 @@ If $\op_0 \in P^+(s)$ and $V \subseteq \vars$, then by $S_{\geq
       goDGplus_nonrecovered_RFC_intersects_totalweight += 1; 
     }
 
-    /* OLD version, with vars
-     */
-    for ( j = 0; j < gOLD_oDGplus_num_nonrecovered_RFC_intersects; j++ ) {
-      if ( gOLD_oDGplus_nonrecovered_RFC_intersect_vars[j] == RFC_intersect[i]->var &&
-	   goperators[gOLD_oDGplus_nonrecovered_RFC_intersect_op0s[j]] == my_o ) {
-	break;
-      }
-    }
-    if ( j == gOLD_oDGplus_num_nonrecovered_RFC_intersects ) {
-      gOLD_oDGplus_nonrecovered_RFC_intersect_vars[gOLD_oDGplus_num_nonrecovered_RFC_intersects] = 
-	RFC_intersect[i]->var;
-      for ( k = 0; k < gnum_operators; k++ ) {
-	if ( goperators[k] == my_o ) {
-	  break;
-	}
-      }
-      if ( k == gnum_operators ) {
-	printf("\ndidn't find my_o operator??\n\n");
-	exit(1);
-      }
-      gOLD_oDGplus_nonrecovered_RFC_intersect_op0s[gOLD_oDGplus_num_nonrecovered_RFC_intersects] = k;
-      gOLD_oDGplus_nonrecovered_RFC_intersects_weights[gOLD_oDGplus_num_nonrecovered_RFC_intersects] = 1; 
-      gOLD_oDGplus_nonrecovered_RFC_intersects_totalweight += 1; 
-      gOLD_oDGplus_num_nonrecovered_RFC_intersects++;
-    } else { /* did find record j! */
-      gOLD_oDGplus_nonrecovered_RFC_intersects_weights[j] += 1; 
-      gOLD_oDGplus_nonrecovered_RFC_intersects_totalweight += 1; 
-    }
-    
   } /* endfor i over RFC intersect */
   
   if ( !failure ) {
@@ -3310,6 +3211,7 @@ If $\op_0 \in P^+(s)$ and $V \subseteq \vars$, then by $S_{\geq
       printf("\ncriterion (2a) applies: RFC_intersect is recovered!");
     }
     result = 1;   
+    goDGplus_num_succ_t0adequateRFCrecovered++; /* Joerg2014: new feature */
   }
 
   /* need to undo Booleans!
@@ -3411,11 +3313,6 @@ void analyze_samples_local_oDGplus( void )
 
   for ( i = 0; i < gcmd_line.num_samples; i++ ) {
 
-    if ( gcmd_line.negative_diagnose_all ) {
-      gdo_negative_diagnosis = TRUE;
-    } else {
-      gdo_negative_diagnosis = FALSE;
-    }
     analyze_local_oDGplus( &(gsample_states[i]) );
 
     if ( gsuccess ) {
@@ -3431,13 +3328,6 @@ void analyze_samples_local_oDGplus( void )
 
       mean_ed_bound += ged_bound;
       
-    } else {
-      if ( !gcmd_line.negative_diagnose_all ) {
-	/* now diagnose this state!
-	 */
-	gdo_negative_diagnosis = TRUE;
-	analyze_local_oDGplus( &(gsample_states[i]) );
-      }
     }
 
     if ( gdead_end ) {

@@ -1,8 +1,6 @@
 
-
-
 /*********************************************************************
- * (C) Copyright 2010 INRIA, France
+ * (C) Copyright 2014 Saarland University
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,30 +19,13 @@
  *********************************************************************/
 
 
-/*
- * THIS SOURCE CODE IS SUPPLIED  ``AS IS'' WITHOUT WARRANTY OF ANY KIND, 
- * AND ITS AUTHOR AND THE JOURNAL OF ARTIFICIAL INTELLIGENCE RESEARCH 
- * (JAIR) AND JAIR'S PUBLISHERS AND DISTRIBUTORS, DISCLAIM ANY AND ALL 
- * WARRANTIES, INCLUDING BUT NOT LIMITED TO ANY IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND
- * ANY WARRANTIES OR NON INFRINGEMENT.  THE USER ASSUMES ALL LIABILITY AND
- * RESPONSIBILITY FOR USE OF THIS SOURCE CODE, AND NEITHER THE AUTHOR NOR
- * JAIR, NOR JAIR'S PUBLISHERS AND DISTRIBUTORS, WILL BE LIABLE FOR 
- * DAMAGES OF ANY KIND RESULTING FROM ITS USE.  Without limiting the 
- * generality of the foregoing, neither the author, nor JAIR, nor JAIR's
- * publishers and distributors, warrant that the Source Code will be 
- * error-free, will operate without interruption, or will meet the needs 
- * of the user.
- */
-
-
 
 
 /*********************************************************************
  * File: main.c
- * Description: The main routine for FF-based TorchLight
+ * Description: TorchLight main routine, modified for feature collection
  *
- * Author: Joerg Hoffmann 2010
+ * Author: Joerg Hoffmann 2014
  * 
  *********************************************************************/ 
 
@@ -527,6 +508,39 @@ State *gsample_states;
 FILE *goutput_file;
 
 
+/* Joerg2014: global vars needed for new features introduced in this
+   version of TorchLight
+ */
+
+/* global analysis: features here simply count the number of gDGs that
+   fail due to a particular reason (sum may be > 100%, each possible
+   reason is tested independently)
+ */
+int ggDG_num_fail_cyclic;
+int ggDG_num_fail_t0notadequate;
+int ggDG_num_fail_nonleavesnotadequate;
+
+/* approximate local analysis
+ */
+/* same as for global analysis
+ */
+int goDGplus_num_fail_cyclic;
+int goDGplus_num_fail_t0notadequate;
+int goDGplus_num_fail_nonleavesnotadequate;
+/* Joerg2014: new count, to measure stats at attempt-level as
+   opposed to sample-state level 
+*/    
+int goDGplus_num_graphs; 
+/* positive features ie from success
+ */
+int goDGplus_num_succ_t0;
+int goDGplus_num_succ_t0adequateRFCempty;
+int goDGplus_num_succ_t0adequateRFCrecovered;
+int goDGplus_num_succ_nonleavesDTGt;
+int goDGplus_num_succ_nonleavesDTGtnoseff;
+int goDGplus_num_succ_nonleavesDTGtirrdel;
+int goDGplus_num_succ_nonleavesDTGtirrseffdel;
+
 
 /* for diagnosis!
  *
@@ -544,73 +558,19 @@ int ggDG_num_graphs;/* for gDG, also need to count number of graphs considered *
 int ggDG_num_successes;
 int glDG_num_successes; /* here num trials is simply number of samples */
 int goDGplus_num_successes;
-int goDGplus_num_failures;
 
-/* The first guy here will be the union of success var0s in gDG
- * analysis.
- */
-int *ggDG_responsible_var0s;
-int *ggDG_responsible_op0s;
-int *ggDG_responsible_op0var0s_weights;/* how many times this guy? */
-int ggDG_num_responsible_op0var0s;
-
-/* The next guy will be the union of success var0s in lDG analysis.
- */
-int *glDG_responsible_var0s;
-int *glDG_responsible_var0s_weights;/* how many times this guy? */
-int glDG_num_responsible_var0s;
-
-/* These here will be the pairs of (successful t0-eff-pred, op0-actionname) for oDG+
- * analysis.
- */
-int *goDGplus_responsible_pred0s;
-int *goDGplus_responsible_op0s;/* index into goperators array! */
-int *goDGplus_responsible_op0pred0s_weights;
-int goDGplus_num_responsible_op0pred0s;
-
-/* Here are the variables that appeared on a cycle in oDG+ analysis.
- */
-int *goDGplus_cycle_vars;
-int *goDGplus_cycle_vars_weights;
-int goDGplus_num_cycle_vars;
-
-/* /\* Here are all facts that were in non-recovered RFC_intersect */
-/*  *\/ */
-/* int *goDGplus_nonrecovered_RFC_intersect; */
-/* int goDGplus_num_nonrecovered_RFC_intersect; */
-
-/* Instead, collect pair of op0-actionname and ft-pred of RFS Intersect.
+/* collect pair of op0-actionname and ft-pred of RFS Intersect.
  */
 int *goDGplus_nonrecovered_RFC_intersect_preds;
 int *goDGplus_nonrecovered_RFC_intersect_op0s;/* index into goperators array! */
 int *goDGplus_nonrecovered_RFC_intersects_weights;
 int goDGplus_num_nonrecovered_RFC_intersects;
 int goDGplus_nonrecovered_RFC_intersects_totalweight;
-
-/* for comparison, here's the alternative previously used, recording
- * op0/var instead.
+/* Joerg2014: new count in order to be able to give back a meaningful
+   feature: number of delete effect predicates considered to be
+   harmful (according to previous diagnosis).
  */
-int *gOLD_oDGplus_nonrecovered_RFC_intersect_vars;
-int *gOLD_oDGplus_nonrecovered_RFC_intersect_op0s;/* index into goperators array! */
-int *gOLD_oDGplus_nonrecovered_RFC_intersects_weights;
-int gOLD_oDGplus_num_nonrecovered_RFC_intersects;
-int gOLD_oDGplus_nonrecovered_RFC_intersects_totalweight = 0;
-
-/* For any non-leaf transition that was invertible/induced but had
- * side effects, here is the pair of responsible rop-actionname and
- * side-effect variable.
- */
-int *goDGplus_nonleafbadtrans_seffvars;
-int *goDGplus_nonleafbadtrans_rops;/* index into goperators array! */
-int *goDGplus_nonleafbadtranss_weights;
-int goDGplus_num_nonleafbadtranss;
-
-/* flag so that SG cycle check knows who he is working for.
- * 1 = gDG, 2 = lDG, 3 = oDG+
- */
-int gchecking_acyclic_for;
-
-
+int gnum_delete_predicates;
 
 /* for EHC run, checking the "predictive quality" of the sampling.
  */
@@ -698,26 +658,44 @@ int main( int argc, char *argv[] )
   Bool gotone;
   float oDGsuccessrate;
 
+  int N1, N2, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12, N13;
 
+  Effect *e;
+  Literal *l;
+  Bool *have_predicate;
 
   /* command line treatment
    */
-  gcmd_line.num_samples = 10; /* default: 10 */
-  gcmd_line.depth_samples = 5; /* default: 5 */
+  gcmd_line.use_FD = TRUE;
+
+  gcmd_line.num_samples = 10;
+  gcmd_line.depth_samples = 5;
 
   gcmd_line.do_gDG = TRUE;
-  gcmd_line.do_lDG = TRUE;
+  gcmd_line.do_lDG = FALSE;
   gcmd_line.do_SG_root = TRUE;
-  gcmd_line.optimize_over_op0var0 = FALSE;
-  gcmd_line.prune_useless_var0 = FALSE;
+  /* Joerg2014: This was FALSE by default. FALSE means that, given a
+     sample state s, as soon as we find a succeeding oDGplus for s, we
+     stop ie we do not generate any further oDG+ for s. TRUE mans that
+     we keep generating oDGplus, and "optimize" over the exit distance
+     bounds delivered. I opted to do this now as (a) it seems more
+     faithful for staistics, as extracted now, over the set of all
+     oDGplus generated as opposed to over the set of sample states; as
+     (b) it may also be somewhat more informative reg exit distance
+     bounds; (c) I don't expect this to take significan runtime
+     anyhow.
+   */
+  gcmd_line.optimize_over_op0var0 = TRUE;
+  /* Joerg2014: This was FALSE by default but I really don't see a point in that 
+   */
+  gcmd_line.prune_useless_var0 = TRUE;
   gcmd_line.replacement_level = 2;
   gcmd_line.do_recoverer_only_relevant = TRUE;
 
-  gcmd_line.do_diagnose = FALSE; /* default: FALSE */
+  gcmd_line.do_diagnose = TRUE; 
   gcmd_line.do_diagnose_gDG_successrate = TRUE;
   gcmd_line.do_diagnose_invertop0 = TRUE;
   gcmd_line.do_diagnose_ignore_exchangedvars = TRUE;
-  gcmd_line.negative_diagnose_all = TRUE;
   gcmd_line.diagnose_prune_useless_var0 = TRUE;
   gcmd_line.show_case_weight = TRUE;
 
@@ -727,16 +705,16 @@ int main( int argc, char *argv[] )
   gcmd_line.run_only_EHCanalyze = FALSE;
 
   gcmd_line.output_file = FALSE;
+
   gcmd_line.display_info = 1;
   gcmd_line.debug = 0;
 
-/*   gcmd_line.do_replace_op0_to_reduce_R; */
-/*   gcmd_line.do_replace_P0plus_to_reduce_R; */
-/*   gcmd_line.do_replace_for_recoverRFC; */
-        
   memset(gcmd_line.ops_file_name, 0, MAX_LENGTH);
   memset(gcmd_line.fct_file_name, 0, MAX_LENGTH);
   memset(gcmd_line.path, 0, MAX_LENGTH);
+  memset(gcmd_line.fdr_path, 0, MAX_LENGTH);
+
+  strncpy(gcmd_line.fdr_path, "./GENERATE-VARS/VARIABLES.txt", MAX_LENGTH);
 
   if ( argc == 1 || ( argc == 2 && *++argv[0] == '?' ) ) {
     ff_usage();
@@ -899,131 +877,26 @@ int main( int argc, char *argv[] )
    * SG-->H+ ANALYSIS! 
    ***********************************************************/
 
-
-
-  if ( gcmd_line.run_only_FF ) {
-    if ( gcmd_line.display_info >= 1 ) {
-      printf("\n\n\nTorchLight: running Enforced Hill-Climbing... "); 
-      fflush(stdout);
-    }
-    times( &start );
-    
-    for ( i = 0; i < MAX_PLAN_LENGTH + 1; i++ ) {
-      make_state( &(gplan_states[i]), gnum_ft_conn );
-      gplan_states[i].max_F = gnum_ft_conn;
-    }
-    
-    gEHC_max_search_depth = -1;
-    doing_EHC = TRUE;
-    
-    if ( !do_enforced_hill_climbing( &ginitial_state, &ggoal_state ) ) {
-      gEHC_success = 0;
-    } else {
-      gEHC_success = 1;
-    }
-
-    times( &end );
-    TIME( gEHC_time );
-
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "EHC.txt", "w")) == NULL ) {
-	printf("\nCan't open EHC.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "!!!!!-----------------------------------------------------------------\n");
-      fprintf(goutput_file, "Input domain             : %s\n", gops_file);
-      fprintf(goutput_file, "Input problem instance   : %s\n", gfct_file);
-      fprintf(goutput_file, "----------------------------------------------------------------------\n");
-      fprintf(goutput_file, "EHC runtime              : %.2f\n", gEHC_time);
-      fprintf(goutput_file, "EHC success              : %d\n", gEHC_success);
-      fprintf(goutput_file, "EHC max search depth     : %d\n", gEHC_max_search_depth);
-      fprintf(goutput_file, "----------------------------------------------------------------------\n");
-      fclose(goutput_file);
-    }
-
-    output_planner_info();
-
-    printf("\n\n");
-    exit( 0 );
-   
-  }
-
-
-  
-  if ( gcmd_line.run_only_EHCanalyze ) {
-    times( &start );
-    
-    sample_states();
-    
-    times( &end );
-    TIME( gsampling_time );
-
-    if ( gcmd_line.display_info >= 1 ) {
-      printf("\n\n\nTorchLight: running local-monotone Enforced Hill-Climbing analysis... "); 
-      fflush(stdout);
-    }
-    
-    times( &start );
-    
-    analyze_samples_local_monotoneEHC();
-    
-    times( &end );
-    TIME( ganalyze_local_sample_monotoneEHC_time );
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "EHCsample.txt", "w")) == NULL ) {
-	printf("\nCan't open EHCsample.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "!!!!!-----------------------------------------------------------------\n");
-      fprintf(goutput_file, "Input domain             : %s\n", gops_file);
-      fprintf(goutput_file, "Input problem instance   : %s\n", gfct_file);
-      fprintf(goutput_file, "----------------------------------------------------------------------\n");
-      fprintf(goutput_file, "Sample states runtime    : %.2f\n", gsampling_time);
-      fprintf(goutput_file, "----------------------------------------------------------------------\n");
-      fclose(goutput_file);
-    }
-
-    
-    printf("\n\nTorchLight (approximate) monotone-local-EHC analysis of sampled states:");
-    printf("\nSuccess and hence no local minima under h+: %6.2f%%", 
-	   gsuccess_percentage);
-    printf("\nDead-end states: %6.2f%%", gdead_end_percentage);
-    printf("\nExit distance bound min: %4d, mean: %6.2f, max: %4d",
-	   gmin_ed_bound, gmean_ed_bound, gmax_ed_bound);
-    fflush(stdout);
-    
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "EHCsample.txt", "a")) == NULL ) {
-	printf("\nCan't open EHCsample.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "Local-monotoneEHC(sample): 1, %6.2f, %6.2f, %6.2f, %3d, %6.2f, %3d\n", 
-	      ganalyze_local_sample_monotoneEHC_time,
-	      gsuccess_percentage,
-	      gdead_end_percentage,
-	      gsuccess_percentage > 0 ? gmin_ed_bound : -1,
-	      gsuccess_percentage > 0 ? gmean_ed_bound : -1,
-	      gsuccess_percentage > 0 ? gmax_ed_bound : -1);
-      fprintf(goutput_file, "----------------------------------------------------------------------\n");
-      fclose(goutput_file);
-    }
-
-    output_planner_info();
-
-    printf("\n\n");
-    exit( 0 );
-   
-  }
-
-
-
+  /* Joerg2014: Modified the below to fix all default configuration
+     parameters, and remove stuff that won't be called anyway given
+     this fix. Also, reduced to a single output file, in readable
+     format collecting all new features. And of course added the code
+     spitting out those features.
+  */
 
   /* first of all, let downward's preprocessor generate the multi-valued vars,
    * and parse them!
    */
-  if ( gcmd_line.display_info >= 1 ) {
-    printf("\nTorchLight: running Fast-Downward translator to generate variables"); 
-    fflush(stdout);
+  if ( gcmd_line.use_FD ) {
+    if ( gcmd_line.display_info >= 1 ) {
+      printf("\nTorchLight: running Fast-Downward translator to generate variables"); 
+      fflush(stdout);
+    }
+  } else {
+    if ( gcmd_line.display_info >= 1 ) {
+      printf("\nTorchLight: reading finite-domain variables"); 
+      fflush(stdout);
+    }
   }
   times( &start );
   
@@ -1139,6 +1012,14 @@ int main( int argc, char *argv[] )
 
 
 
+
+  printf("\n\nSTART-------------------------------------------------------------------------\n");
+  printf("---META-INFORMATION---------------------------------------------------------------\n");
+  printf("Input domain                    : %s\n", gops_file);
+  printf("Input problem instance          : %s\n", gfct_file);
+  printf("Number of sample states         : %d\n", gcmd_line.num_samples);
+  fflush(stdout);
+
   /* we will always immediately close the output file, so that in case
    * the analysis fails somewhere we still have all the other data!
    */
@@ -1147,189 +1028,81 @@ int main( int argc, char *argv[] )
       printf("\nCan't open TorchLight.txt output file!\n\n");
       exit(1);
     }
-    fprintf(goutput_file, "!!!!!-----------------------------------------------------------------\n");
-    fprintf(goutput_file, "Input domain             : %s\n", gops_file);
-    fprintf(goutput_file, "Input problem instance   : %s\n", gfct_file);
-    fprintf(goutput_file, "----------------------------------------------------------------------\n");
-    fprintf(goutput_file, "Number of samples        : %d\n", gcmd_line.num_samples);
-    fprintf(goutput_file, "FD runtime for vars      : %.2f\n", gFDvariables_time);
-    fprintf(goutput_file, "Total preprocess runtime : %.2f\n", 
-	    gtempl_time + greach_time + grelev_time + gconn_time + gSG_DTG_time);
-    fprintf(goutput_file, "Static SG+DTG analysis rt: %.2f\n", 
-	    gSG_DTG_static_analyze_time);
-    fprintf(goutput_file, "----------------------------------------------------------------------\n");
+    fprintf(goutput_file, "START-----------------------------------------------------------------------------\n");
+    fprintf(goutput_file, "---META-INFORMATION---------------------------------------------------------------\n");
+    fprintf(goutput_file, "Input domain                    : %s\n", gops_file);
+    fprintf(goutput_file, "Input problem instance          : %s\n", gfct_file);
+    fprintf(goutput_file, "Number of sample states         : %d\n", gcmd_line.num_samples);
     fclose(goutput_file);
   }
 
 
 
 
+  /* Joerg2014: first, spit out features from static analysis.
 
-
-  /* now we can finally do some analysis!
+     NOTE: I decided to NOT distinguish separate features for
+     "replacability" and "recoverability"; these are things that were
+     originally mainly motivated by particular benchmarks (simpletsp
+     and rovers respectively), and my feeling is that such features
+     would be more a "domain-recognizer" than make any generalizable
+     statement about the structure of the domain. I follow the same
+     strategy below, in both global analysis and approximate local
+     analysis I do not include features giving stats on how often
+     these two criteria were successful (as opposed to the standard
+     criterion reasoning about the nature of the deletes of t0).
    */
-
-
-
-  if ( gcmd_line.do_gDG ) {
-    times( &start );
-    
-    analyze_global();
-    
-    times( &end );
-    TIME( ganalyze_global_time );
-    
-    if ( gsuccess ) {
-      printf("\nTorchLight guaranteed global analysis:");
-      printf("\nNo local minima under h+, exit distance bound %d.",
-	     ged_bound);
-    } else {
-      printf("\nTorchLight guaranteed global analysis:");
-      printf("\nFailed.");
+  N1 = 0; N2 = 0; N3 = 0; N4 = 0; N5 = 0; N6 = 0; N7 = 0; N8 = 0; N9 = 0; N10 = 0; N11 = 0; N12 = 0; N13 = 0;
+  for ( i = 0; i < gnum_variables; i++ ) {
+    if ( gDTGs[i].all_invertible ) N1++;
+    if ( gDTGs[i].all_no_side_effects ) N2++;
+    if ( gDTGs[i].all_irrelevant_side_effect_deletes ) N3++;
+    if ( gDTGs[i].var_is_SG_leaf ) {
+      N4++;
+      if ( gDTGs[i].LEAF_irrelevant_or_irrelevantseffdel_or_irrelevantseffrecoverableseffdel ) N5++;
     }
-    if ( gcmd_line.do_diagnose_gDG_successrate ) {
-      printf("\nPercentage of successful x0/t0 gDGs    : %6.2f%% (%d of %d)", 
-	     ((float) ggDG_num_successes) / ((float) ggDG_num_graphs) * 100.0,
-	     ggDG_num_successes,
-	     ggDG_num_graphs);
+    if ( !gDTGs[i].var_is_SG_leaf ) {
+      N6++;
+      if ( gDTGs[i].NONLEAF_irrelevant_or_invertiblenoseff_or_irrelevantdeletes ) N7++;
     }
-    fflush(stdout);
-    
-    /* output file format:
-     * <name>: [Done?] <0/1>, [Runtime?] <float>, [Successes?] <%>, [Dead-ends?] <%>, [min-ed] <int>, [mean-ed] <float>, [max-ed] <int> 
-     * where not sensible, replace by -1
-     */
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	printf("\nCan't open TorchLight.txt output file!\n\n");
-	exit(1);
-      }
-      if ( gcmd_line.do_diagnose_gDG_successrate ) {
-	fprintf(goutput_file, "Global                   : 1, %6.2f, %6.2f,  -1   , %3d, %6.2f, %3d\n", 
-		ganalyze_global_time,
-		((float) ggDG_num_successes) / ((float) ggDG_num_graphs) * 100.0,
-		gsuccess ? ged_bound : -1,
-		gsuccess ? ((float) ged_bound) : -1,
-		gsuccess ? ged_bound : -1);
-      } else {
-	fprintf(goutput_file, "Global                   : 1, %6.2f, %6.2f,  -1   , %3d, %6.2f, %3d\n", 
-		ganalyze_global_time,
-		gsuccess ? 100.0 : 0.0,
-		gsuccess ? ged_bound : -1,
-		gsuccess ? ((float) ged_bound) : -1,
-		gsuccess ? ged_bound : -1);
-      }
-      fclose(goutput_file);
-    }
-  } else {
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	printf("\nCan't open TorchLight.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "Global                   : 0,  -1   ,  -1   ,  -1   ,  -1,  -1   ,  -1\n");
-      fclose(goutput_file);
+    for ( j = 0; j < gDTGs[i].num_transitions; j++ ) {
+      N8++;
+      if ( gDTGs[i].transitions[j].invertible ) N9++;
+      if ( gDTGs[i].transitions[j].no_side_effects ) N10++;
+      if ( gDTGs[i].transitions[j].irrelevant_side_effect_deletes ) N11++;
+      if ( gDTGs[i].transitions[j].self_irrelevant_side_effect_deletes ) N12++;
+      if ( gDTGs[i].transitions[j].irrelevant_own_delete ) N13++;
     }
   }
 
-
-
-  if ( gcmd_line.do_lDG ) {
-    /* now do lDG-based analysis of initial state.
-     */
-    times( &start );
-    
-    if ( gcmd_line.negative_diagnose_all ) {
-      gdo_negative_diagnosis = TRUE;
-    } else {
-      gdo_negative_diagnosis = FALSE;
-    }
-    analyze_local_lDG( &ginitial_state );
-    if ( !gsuccess && !gcmd_line.negative_diagnose_all ) {
-      /* now analyze this state again, for diagnosis!
-       */
-      gdo_negative_diagnosis = TRUE;
-      analyze_local_lDG( &ginitial_state );
-    }
-    
-    times( &end );
-    TIME( ganalyze_local_ini_lDG_time );
-
-    if ( gsuccess ) {
-      printf("\n\nTorchLight guaranteed local analysis of initial state:");
-      printf("\nNo local minima under h+, exit distance bound: %d.",
-	     ged_bound);
-    } else {
-      if ( gdead_end ) {
-	printf("\n\nTorchLight guaranteed local analysis of initial state:");
-	printf("\nIs a dead end.");
-      } else {
-	printf("\n\nTorchLight guaranteed local analysis of initial state:");
-	printf("\nFailed.");
-      }
-    }
-    fflush(stdout);
-    
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	printf("\nCan't open TorchLight.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "Local-guaranteed(ini)    : 1, %6.2f, %6.2f, %6.2f, %3d, %6.2f, %3d\n", 
-	      ganalyze_local_ini_lDG_time,
-	      gsuccess ? 100.0 : 0.0,
-	      gdead_end ? 100.0 : 0.0,
-	      gsuccess ? ged_bound : -1,
-	      gsuccess ? ((float) ged_bound) : -1,
-	      gsuccess ? ged_bound : -1);
-      fclose(goutput_file);
-    }
-  } else {
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	printf("\nCan't open TorchLight.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "Local-guaranteed(ini)    : 0,  -1   ,  -1   ,  -1   ,  -1,  -1   ,  -1\n");
-      fclose(goutput_file);
-    }
-  }
-
-
-
-  /* now oDGplus-based analysis of initial state.
-   */
-  times( &start );
-
-  if ( gcmd_line.negative_diagnose_all ) {
-    gdo_negative_diagnosis = TRUE;
-  } else {
-    gdo_negative_diagnosis = FALSE;
-  }
-  analyze_local_oDGplus( &ginitial_state );
-  if ( !gsuccess && !gcmd_line.negative_diagnose_all ) {
-    /* now analyze this state again, for diagnosis!
-     */
-    gdo_negative_diagnosis = TRUE;
-    analyze_local_oDGplus( &ginitial_state );
-  }
-
-  times( &end );
-  TIME( ganalyze_local_ini_oDGplus_time );
-
-  if ( gsuccess ) {
-    printf("\n\nTorchLight approximate local analysis of initial state:");
-    printf("\nNo local minima under h+, exit distance bound: %d.",
-	   ged_bound);
-  } else {
-    if ( gdead_end ) {
-      printf("\n\nTorchLight approximate local analysis of initial state:");
-      printf("\nIs a dead end.");
-    } else {
-      printf("\n\nTorchLight approximate local analysis of initial state:");
-      printf("\nFailed.");
-    }
-  }
+  printf("\n\n----------------------------------------------------------------------------------\n");
+  printf("---DOMAIN TRANSITION GRAPHS (DTG-t: DTG transition)-------------------------------\n");
+  /* Joerg2014: Actually this is disabled. was runtime critical in
+     some benchmarks. Presumably of limited usefulness anyhow given we
+     already consider the std causal graph in other features.
+  */
+  /* printf("Support graph is acyclic        : %3d /\* 1 : yes; 0: no *\/\n",  */
+  /* 	  gSG.is_acyclic); */
+  printf("Perc vars all DTG-t invertible  : %3d\n", 
+	 (int) (((float) N1) / ((float) gnum_variables) * 100.0));
+  printf("Perc vars all DTG-t no side-eff : %3d /* all no side effects */\n",  
+	 (int) (((float) N2) / ((float) gnum_variables) * 100.0));
+  printf("Perc vars all DTG-t irr side-eff: %3d /* all side effect deletes irrelevant */\n",  
+	 (int) (((float) N3) / ((float) gnum_variables) * 100.0));
+  printf("Perc well-behaved leaf vars     : %3d /* support graph leaf vars satisfying global TorchLight criterion */\n", 
+	 N4 == 0 ? 0 : (int) (((float) N5) / ((float) N4) * 100.0));
+  printf("Perc well-behaved nonleaf vars  : %3d /* support graph nonleaf vars satisfying global TorchLight criterion */\n", 
+	 N6 == 0 ? 0 : (int) (((float) N7) / ((float) N6) * 100.0));
+  printf("Perc DTG-t invertible           : %3d\n", 
+	 (int) (((float) N9) / ((float) N8) * 100.0));
+  printf("Perc DTG-t no side-ef f         : %3d /* no side effects */\n", 
+	 (int) (((float) N10) / ((float) N8) * 100.0));
+  printf("Perc DTG-t irr side-eff         : %3d /* all side effect deletes irrelevant */\n", 
+	 (int) (((float) N11) / ((float) N8) * 100.0));
+  printf("Perc DTG-t self-irr side-eff    : %3d /* all side effect deletes irrelevant, except for own precond */\n", 
+	 (int) (((float) N12) / ((float) N8) * 100.0));
+  printf("Perc DTG-t irr own-delete       : %3d /* start value of transition is irrelevant */\n", 
+	 (int) (((float) N13) / ((float) N8) * 100.0));  
   fflush(stdout);
 
   if ( gcmd_line.output_file ) {
@@ -1337,14 +1110,34 @@ int main( int argc, char *argv[] )
       printf("\nCan't open TorchLight.txt output file!\n\n");
       exit(1);
     }
-    fprintf(goutput_file, "Local-approximate(ini)   : 1, %6.2f, %6.2f, %6.2f, %3d, %6.2f, %3d\n", 
-	    ganalyze_local_ini_oDGplus_time,
-	    gsuccess ? 100.0 : 0.0,
-	    gdead_end ? 100.0 : 0.0,
-	    gsuccess ? ged_bound : -1,
-	    gsuccess ? ((float) ged_bound) : -1,
-	    gsuccess ? ged_bound : -1);
-    fprintf(goutput_file, "----------------------------------------------------------------------\n");
+    fprintf(goutput_file, "----------------------------------------------------------------------------------\n");
+    fprintf(goutput_file, "---DOMAIN TRANSITION GRAPHS (DTG-t: DTG transition)-------------------------------\n");
+    /* Joerg2014: Actually this is disabled. was runtime critical in
+       some benchmarks. Presumably of limited usefulness anyhow given
+       we already consider the std causal graph in other features.
+    */
+    /* fprintf(goutput_file, "Support graph is acyclic        : %3d /\* 1 : yes; 0: no *\/\n",  */
+    /* 	    gSG.is_acyclic); */
+    fprintf(goutput_file, "Perc vars all DTG-t invertible  : %3d\n", 
+	    (int) (((float) N1) / ((float) gnum_variables) * 100.0));
+    fprintf(goutput_file, "Perc vars all DTG-t no side-eff : %3d /* all no side effects */\n",  
+	    (int) (((float) N2) / ((float) gnum_variables) * 100.0));
+    fprintf(goutput_file, "Perc vars all DTG-t irr side-eff: %3d /* all side effect deletes irrelevant */\n",  
+	    (int) (((float) N3) / ((float) gnum_variables) * 100.0));
+    fprintf(goutput_file, "Perc well-behaved leaf vars     : %3d /* support graph leaf vars satisfying global TorchLight criterion */\n", 
+	    N4 == 0 ? 0 : (int) (((float) N5) / ((float) N4) * 100.0));
+    fprintf(goutput_file, "Perc well-behaved nonleaf vars  : %3d /* support graph nonleaf vars satisfying global TorchLight criterion */\n", 
+	    N6 == 0 ? 0 : (int) (((float) N7) / ((float) N6) * 100.0));
+    fprintf(goutput_file, "Perc DTG-t invertible           : %3d\n", 
+	    (int) (((float) N9) / ((float) N8) * 100.0));
+    fprintf(goutput_file, "Perc DTG-t no side-eff          : %3d /* no side effects */\n", 
+	    (int) (((float) N10) / ((float) N8) * 100.0));
+    fprintf(goutput_file, "Perc DTG-t irr side-eff         : %3d /* all side effect deletes irrelevant */\n", 
+	    (int) (((float) N11) / ((float) N8) * 100.0));
+    fprintf(goutput_file, "Perc DTG-t self-irr side-eff    : %3d /* all side effect deletes irrelevant, except for own precond */\n", 
+	    (int) (((float) N12) / ((float) N8) * 100.0));
+    fprintf(goutput_file, "Perc DTG-t irr own-delete       : %3d /* start value of transition is irrelevant */\n", 
+	    (int) (((float) N13) / ((float) N8) * 100.0));  
     fclose(goutput_file);
   }
 
@@ -1353,395 +1146,252 @@ int main( int argc, char *argv[] )
 
 
 
-  if ( gcmd_line.num_samples > 0 ) {
-
-
-
-    /* now sample states for local analysis. First generate an array of
-     * the states, so that we can use the same states in lDG and oDG+.
-     */
-    if ( gcmd_line.display_info >= 1 ) {
-      printf("\n\nTorchLight: sampling random states"); 
-      fflush(stdout);
-    }
-    times( &start );
-    
-    sample_states();
-    
-    times( &end );
-    TIME( gsampling_time );
-    if ( gcmd_line.display_info >= 1 ) {
-      printf(" ... done.");
-      fflush(stdout);
-    }
-
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	printf("\nCan't open TorchLight.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "Sample states runtime    : %.2f\n", gsampling_time);
-      fprintf(goutput_file, "----------------------------------------------------------------------\n");
-      fclose(goutput_file);
-    }
-
-
-
-
-    if ( gcmd_line.do_lDG ) {
-      times( &start );
-      
-      analyze_samples_local_lDG();
-      
-      times( &end );
-      TIME( ganalyze_local_sample_lDG_time );
-      
-      printf("\n\nTorchLight guaranteed local analysis of sampled states:");
-      printf("\nSuccess and hence no local minima under h+: %6.2f%%", 
-	     gsuccess_percentage);
-      printf("\nDead-end states: %6.2f%%", gdead_end_percentage);
-      printf("\nExit distance bound min: %4d, mean: %6.2f, max: %4d",
-	     gmin_ed_bound, gmean_ed_bound, gmax_ed_bound);
-      fflush(stdout);
-      
-      if ( gcmd_line.output_file ) {
-	if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	  printf("\nCan't open TorchLight.txt output file!\n\n");
-	  exit(1);
-	}
-	fprintf(goutput_file, "Local-guaranteed(sample) : 1, %6.2f, %6.2f, %6.2f, %3d, %6.2f, %3d\n", 
-		ganalyze_local_sample_lDG_time,
-		gsuccess_percentage,
-		gdead_end_percentage,
-		gsuccess_percentage > 0 ? gmin_ed_bound : -1,
-		gsuccess_percentage > 0 ? gmean_ed_bound : -1,
-		gsuccess_percentage > 0 ? gmax_ed_bound : -1);
-	fclose(goutput_file);
-      }
-    } else {
-      if ( gcmd_line.output_file ) {
-	if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	  printf("\nCan't open TorchLight.txt output file!\n\n");
-	  exit(1);
-	}
-	fprintf(goutput_file, "Local-guaranteed(sample) : 0,  -1   ,  -1   ,  -1   ,  -1,  -1   ,  -1\n");
- 	fclose(goutput_file);
-      }
-    }
-
-    
-   
-    /* now analyze the samples using oDG+.
-     */
-    times( &start );
-    
-    analyze_samples_local_oDGplus();
-     
-    times( &end );
-    TIME( ganalyze_local_sample_oDGplus_time );
-    oDGsuccessrate = gsuccess_percentage;
-   
-    printf("\n\nTorchLight approximate local analysis of sampled states:");
-    printf("\nSuccess and hence no local minima under h+: %6.2f%%", 
-	   gsuccess_percentage);
-    printf("\nDead-end states: %6.2f%%", gdead_end_percentage);
-    printf("\nExit distance bound min: %4d, mean: %6.2f, max: %4d",
-	   gmin_ed_bound, gmean_ed_bound, gmax_ed_bound);
-    fflush(stdout);
-    
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	printf("\nCan't open TorchLight.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "Local-approximate(sample): 1, %6.2f, %6.2f, %6.2f, %3d, %6.2f, %3d\n", 
-	      ganalyze_local_sample_oDGplus_time,
-	      gsuccess_percentage,
-	      gdead_end_percentage,
-	      gsuccess_percentage > 0 ? gmin_ed_bound : -1,
-	      gsuccess_percentage > 0 ? gmean_ed_bound : -1,
-	      gsuccess_percentage > 0 ? gmax_ed_bound : -1);
-      fprintf(goutput_file, "----------------------------------------------------------------------\n");
-      fclose(goutput_file);
-    }
-
-    
-
-
-    /* now analyze the samples using local-EHC on monotone paths, if
-     * wanted!
-     */
-    if ( gcmd_line.run_EHCanalyze ) {
-      if ( gcmd_line.display_info >= 1 ) {
-	printf("\n\n\nTorchLight: running local-monotone Enforced Hill-Climbing analysis... "); 
-	fflush(stdout);
-      }
-      
-      times( &start );
-      
-      analyze_samples_local_monotoneEHC();
-      
-      times( &end );
-      TIME( ganalyze_local_sample_monotoneEHC_time );
-      
-      printf("\n\nTorchLight (approximate) monotone-local-EHC analysis of sampled states:");
-      printf("\nSuccess and hence no local minima under h+: %6.2f%%", 
-	     gsuccess_percentage);
-      printf("\nDead-end states: %6.2f%%", gdead_end_percentage);
-      printf("\nExit distance bound min: %4d, mean: %6.2f, max: %4d",
-	     gmin_ed_bound, gmean_ed_bound, gmax_ed_bound);
-      fflush(stdout);
-      
-      if ( gcmd_line.output_file ) {
-	if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	  printf("\nCan't open TorchLight.txt output file!\n\n");
-	  exit(1);
-	}
-	fprintf(goutput_file, "Local-monotoneEHC(sample): 1, %6.2f, %6.2f, %6.2f, %3d, %6.2f, %3d\n", 
-		ganalyze_local_sample_monotoneEHC_time,
-		gsuccess_percentage,
-		gdead_end_percentage,
-		gsuccess_percentage > 0 ? gmin_ed_bound : -1,
-		gsuccess_percentage > 0 ? gmean_ed_bound : -1,
-		gsuccess_percentage > 0 ? gmax_ed_bound : -1);
-	fprintf(goutput_file, "----------------------------------------------------------------------\n");
-	fclose(goutput_file);
-      }
-    } else {
-      if ( gcmd_line.output_file ) {
-	if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	  printf("\nCan't open TorchLight.txt output file!\n\n");
-	  exit(1);
-	}
-	fprintf(goutput_file, "Local-monotoneEHC(sample): 0,  -1   ,  -1   ,  -1   ,  -1,  -1   ,  -1\n");
-	fprintf(goutput_file, "----------------------------------------------------------------------\n");
-	fclose(goutput_file);
-      }
-    }
-  }
-
-
-
-  /* for the moment, suppress only the diagnosis output, not the
-   * diagnosis itself...
+  /* now do global analysis
    */
-  if ( gcmd_line.do_diagnose ) {
-    /* now give diagnosis output!
-     */
-    printf("\n\nTorchLight DIAGNOSIS -- of SUCCESS:");
+  times( &start );
+  
+  analyze_global();
+  
+  times( &end );
+  TIME( ganalyze_global_time );
+  
+  printf("\n\n----------------------------------------------------------------------------------\n");
+  printf("---GUARANTEED GLOBAL ANALYSIS (USES GLOBAL DEPENDENCY GRAPHS gDG)-----------------\n");
+  printf("Perc successful gDG             : %3d /* = 100 ==> provably no local minima under h+ */\n", 
+	 (int) (((float) ggDG_num_successes) / ((float) ggDG_num_graphs) * 100.0));
+  printf("h+ exit distance bound          : %3d, %6.2f, %3d /* min, mean, max over successful gDGs (-1 if perc successful gDG = 0); perc successful gDG = 100 ==> max is a provable upper bound on exit distance under h+ */\n", 
+	 ggDG_num_successes > 0 ? gmin_ed_bound : -1,
+	 ggDG_num_successes > 0 ? gmean_ed_bound : -1,
+	 ggDG_num_successes > 0 ? gmax_ed_bound : -1);
+  printf("Perc gDG cyclic                 : %3d /* perc gDG cannot be successful because cyclic */\n", 
+	 (int) (((float) ggDG_num_fail_cyclic) / ((float) ggDG_num_graphs) * 100.0));
+  printf("Perc gDG t0 not Ok              : %3d /* perc gDG cannot be successful because deletes of t0 harmful */\n", 
+	 (int) (((float) ggDG_num_fail_t0notadequate) / ((float) ggDG_num_graphs) * 100.0));
+  printf("Perc gDG support not Ok         : %3d /* perc gDG cannot be successful because supporting var DTGs not suitable */\n", 
+	 (int) (((float) ggDG_num_fail_nonleavesnotadequate) / ((float) ggDG_num_graphs) * 100.0));
+  fflush(stdout);
     
-    if ( gcmd_line.do_diagnose_gDG_successrate ) {
-      /* output info for gDGs only if some -- not all -- of the gDGs
-       * were successful!
-       */
-      if ( ggDG_num_successes > 0 &&
-	   ggDG_num_successes < ggDG_num_graphs ) {
-	printf("\n\nSuccessful leaf operators op0 (on variable x0) in partially successful static global analysis:");
-	for ( i = 0; i < ggDG_num_responsible_op0var0s; i++ ) {
-	  printf("\n"); 
-	  printf("%s", goperators[ggDG_responsible_op0s[i]]->name);
-	  printf(" (");
-	  print_Variable(ggDG_responsible_var0s[i]);
-	  printf(")");
-	  if ( gcmd_line.show_case_weight ) {
-	    printf(": %6.2f%% of cases", 
-		   ((float) ggDG_responsible_op0var0s_weights[i]) / ((float) ggDG_num_successes) * 100.0);
-	  }
-	}
-      }
+  if ( gcmd_line.output_file ) {
+    if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
+      printf("\nCan't open TorchLight.txt output file!\n\n");
+      exit(1);
     }
-
-    if ( gcmd_line.do_lDG &&
-	 glDG_num_responsible_var0s > 0 ) {
-      printf("\n\nSuccessful leaf variables x0 in guaranteed local analysis:");
-      for ( i = 0; i < glDG_num_responsible_var0s; i++ ) {
-	printf("\n"); 
-	print_Variable(glDG_responsible_var0s[i]);
-	if ( gcmd_line.show_case_weight ) {
-	  printf(": %6.2f%% of cases", 
-		 ((float) glDG_responsible_var0s_weights[i]) / ((float) glDG_num_successes) * 100.0);
-	}
-      }
-    }
-    
-    if ( goDGplus_num_responsible_op0pred0s > 0 ) {
-      printf("\n\nSuccessful leaf operators op0 (on variable x0) in approximate local analysis:");
-      for ( i = 0; i < goDGplus_num_responsible_op0pred0s; i++ ) {
-	printf("\n"); 
-	printf("%s", goperators[goDGplus_responsible_op0s[i]]->name);
-	printf(" (");
-	printf("%s", gpredicates[goDGplus_responsible_pred0s[i]]);
-	printf(")");
-	if ( gcmd_line.show_case_weight ) {
-	  printf(": %6.2f%% of cases", 
-		 ((float) goDGplus_responsible_op0pred0s_weights[i]) / ((float) goDGplus_num_successes) * 100.0);
-	}
-      }
-    }
-    
-    printf("\n\nTorchLight DIAGNOSIS -- of FAILURE:");
-    
-    if ( goDGplus_num_cycle_vars > 0 ) {
-      printf("\n\nVariables on oDG+ cycles in approximate local analysis:");
-      for ( i = 0; i < goDGplus_num_cycle_vars; i++ ) {
-	printf("\n"); 
-	print_Variable(goDGplus_cycle_vars[i]);
-	if ( gcmd_line.show_case_weight ) {
-	  printf(": %6.2f%% of cases", 
-		 ((float) goDGplus_cycle_vars_weights[i]) / ((float) goDGplus_num_failures) * 100.0);
-	}
-      }
-    }
-    
-    if ( goDGplus_num_nonleafbadtranss > 0 ) {
-      printf("\n\nSide effects of invertible/induced transitions in approximate local analysis:");
-      for ( i = 0; i < goDGplus_num_nonleafbadtranss; i++ ) {
-	printf("\n"); 
-	printf("%s", goperators[goDGplus_nonleafbadtrans_rops[i]]->name);
-	printf(" (");
-	print_Variable(goDGplus_nonleafbadtrans_seffvars[i]);
-	printf(")");
-	if ( gcmd_line.show_case_weight ) {
-	  printf(": %6.2f%% of cases", 
-		 ((float) goDGplus_nonleafbadtranss_weights[i]) / ((float) goDGplus_num_failures) * 100.0);
-	}
-      }
-    }
-      
-      
-    if ( gOLD_oDGplus_num_nonrecovered_RFC_intersects > 0 ) {
-      printf("\n\nTop weighted non-recovered op0/variable in approximate local analysis:");
-      gotone = TRUE;
-      while ( gotone ) {
-	gotone = FALSE;	
-	maxw = -1;
-	maxi = -1;
-	for ( i = 0; i < gOLD_oDGplus_num_nonrecovered_RFC_intersects; i++ ) {
-	  if ( maxw == -1 || gOLD_oDGplus_nonrecovered_RFC_intersects_weights[i] > maxw ) {
-	    maxw = gOLD_oDGplus_nonrecovered_RFC_intersects_weights[i];
-	    maxi = i;
-	  }
-	}	
-	if ( maxi != -1 ) {
-	  gotone = TRUE;
-	  printf("\n");
-	  if ( gcmd_line.show_case_weight ) {
-	    printf("%6.2f%% of weight -- ",
-		   ((float) gOLD_oDGplus_nonrecovered_RFC_intersects_weights[maxi]) /
-		   ((float) gOLD_oDGplus_nonrecovered_RFC_intersects_totalweight) * 100.0);
-	  }
-	  printf("%s", goperators[gOLD_oDGplus_nonrecovered_RFC_intersect_op0s[maxi]]->name);
-	  printf(" (");
-	  print_Variable(gOLD_oDGplus_nonrecovered_RFC_intersect_vars[maxi]);
-	  printf(")");
-
-	  for ( j = maxi; j < gOLD_oDGplus_num_nonrecovered_RFC_intersects-1; j++ ) {
-	    gOLD_oDGplus_nonrecovered_RFC_intersects_weights[j] = gOLD_oDGplus_nonrecovered_RFC_intersects_weights[j+1];
-	    gOLD_oDGplus_nonrecovered_RFC_intersect_op0s[j] = gOLD_oDGplus_nonrecovered_RFC_intersect_op0s[j+1];
-	    gOLD_oDGplus_nonrecovered_RFC_intersect_vars[j] = gOLD_oDGplus_nonrecovered_RFC_intersect_vars[j+1];
-	  }
-	  gOLD_oDGplus_num_nonrecovered_RFC_intersects--;
-	}
-      } 
-    }
-    
-
-    if ( goDGplus_num_nonrecovered_RFC_intersects > 0 ) {
-      printf("\n\nTop weighted non-recovered op/predicate in approximate local analysis:");
-      gotone = TRUE;
-      while ( gotone ) {
-	gotone = FALSE;
-	maxw = -1;
-	maxi = -1;
-	for ( i = 0; i < goDGplus_num_nonrecovered_RFC_intersects; i++ ) {	  
-	  if ( maxw == -1 || goDGplus_nonrecovered_RFC_intersects_weights[i] > maxw ) {
-	    maxw = goDGplus_nonrecovered_RFC_intersects_weights[i];
-	    maxi = i;
-	  }
-	}
-	if ( maxi != -1 ) {
-	  gotone = TRUE;
-	  printf("\n");
-	  if ( gcmd_line.show_case_weight ) {
-	    printf("%6.2f%% of weight -- ",
-		   ((float) goDGplus_nonrecovered_RFC_intersects_weights[maxi]) /
-		   ((float) goDGplus_nonrecovered_RFC_intersects_totalweight) * 100.0);
-	  }
-	  printf("%s", goperators[goDGplus_nonrecovered_RFC_intersect_op0s[maxi]]->name);
-	  printf(" (");
-	  printf("%s", gpredicates[goDGplus_nonrecovered_RFC_intersect_preds[maxi]]);
-	  printf(")");
-
-	  for ( j = maxi; j < goDGplus_num_nonrecovered_RFC_intersects-1; j++ ) {
-	    goDGplus_nonrecovered_RFC_intersects_weights[j] = goDGplus_nonrecovered_RFC_intersects_weights[j+1];
-	    goDGplus_nonrecovered_RFC_intersect_op0s[j] = goDGplus_nonrecovered_RFC_intersect_op0s[j+1];
-	    goDGplus_nonrecovered_RFC_intersect_preds[j] = goDGplus_nonrecovered_RFC_intersect_preds[j+1];
-	  }
-	  goDGplus_num_nonrecovered_RFC_intersects--;
-	}
-      } 
-    } 
-          
-  } /* endif do diagnose */
-
-
-
-
-
-
-
-  if ( gcmd_line.run_FF ) {
-    /* finally, if desired: run EHC and record its success/it's maximal
-     * search depth!
-     */
-    if ( gcmd_line.display_info >= 1 ) {
-      printf("\n\n\nTorchLight: running Enforced Hill-Climbing... "); 
-      fflush(stdout);
-    }
-    times( &start );
-    
-    for ( i = 0; i < MAX_PLAN_LENGTH + 1; i++ ) {
-      make_state( &(gplan_states[i]), gnum_ft_conn );
-      gplan_states[i].max_F = gnum_ft_conn;
-    }
-
-    gEHC_max_search_depth = -1;
-    doing_EHC = TRUE;
-
-    if ( !do_enforced_hill_climbing( &ginitial_state, &ggoal_state ) ) {
-      gEHC_success = 0;
-    } else {
-      gEHC_success = 1;
-    }
-
-    times( &end );
-    TIME( gEHC_time );
-
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	printf("\nCan't open TorchLight.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "EHC runtime              : %.2f\n", gEHC_time);
-      fprintf(goutput_file, "EHC success              : %d\n", gEHC_success);
-      fprintf(goutput_file, "EHC max search depth     : %d\n", gEHC_max_search_depth);
-      fprintf(goutput_file, "----------------------------------------------------------------------\n");
-      fclose(goutput_file);
-    }
-  } else {/* endif run FF wanted */ 
-    if ( gcmd_line.output_file ) {
-      if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
-	printf("\nCan't open TorchLight.txt output file!\n\n");
-	exit(1);
-      }
-      fprintf(goutput_file, "EHC runtime              : -1\n");
-      fprintf(goutput_file, "EHC success              : -1\n");
-      fprintf(goutput_file, "EHC max search depth     : -1\n");
-      fprintf(goutput_file, "----------------------------------------------------------------------\n");
-      fclose(goutput_file);
-    }  
+    fprintf(goutput_file, "----------------------------------------------------------------------------------\n");
+    fprintf(goutput_file, "---GUARANTEED GLOBAL ANALYSIS (USES GLOBAL DEPENDENCY GRAPHS gDG)-----------------\n");
+    fprintf(goutput_file, "Perc successful gDG             : %3d /* = 100 ==> provably no local minima under h+ */\n", 
+	    (int) (((float) ggDG_num_successes) / ((float) ggDG_num_graphs) * 100.0));
+    fprintf(goutput_file, "h+ exit distance bound          : %3d, %6.2f, %3d /* min, mean, max over successful gDGs (-1 if perc successful gDG = 0); perc successful gDG = 100 ==> max is a provable upper bound on exit distance under h+ */\n", 
+	    ggDG_num_successes > 0 ? gmin_ed_bound : -1,
+	    ggDG_num_successes > 0 ? gmean_ed_bound : -1,
+	    ggDG_num_successes > 0 ? gmax_ed_bound : -1);
+    fprintf(goutput_file, "Perc gDG cyclic                 : %3d /* perc gDG cannot be successful because cyclic */\n", 
+	    (int) (((float) ggDG_num_fail_cyclic) / ((float) ggDG_num_graphs) * 100.0));
+    fprintf(goutput_file, "Perc gDG t0 not Ok              : %3d /* perc gDG cannot be successful because deletes of t0 harmful */\n", 
+	    (int) (((float) ggDG_num_fail_t0notadequate) / ((float) ggDG_num_graphs) * 100.0));
+    fprintf(goutput_file, "Perc gDG support not Ok         : %3d /* perc gDG cannot be successful because supporting var DTGs not suitable */\n", 
+	    (int) (((float) ggDG_num_fail_nonleavesnotadequate) / ((float) ggDG_num_graphs) * 100.0));
+    fclose(goutput_file);
   }
 
+
+
+
+
+
+  /* now sample states for local analysis. First generate an array of
+   * the states, so that we can use the same states in lDG and oDG+.
+   */
+  if ( gcmd_line.display_info >= 1 ) {
+    printf("\n\nTorchLight: sampling random states"); 
+      fflush(stdout);
+  }
+  times( &start );
+  
+  sample_states();
+  
+  times( &end );
+  TIME( gsampling_time );
+  if ( gcmd_line.display_info >= 1 ) {
+    printf(" ... done.\n");
+    fflush(stdout);
+  }
+
+
+
+
+
+   
+  /* now analyze the samples using oDG+.
+   */
+  times( &start );
+  
+  analyze_samples_local_oDGplus();
+  
+  times( &end );
+  TIME( ganalyze_local_sample_oDGplus_time );
+  oDGsuccessrate = gsuccess_percentage;
+  
+  printf("\n\n----------------------------------------------------------------------------------\n");
+  printf("---APPROXIMATE LOCAL ANALYSIS (USES OPTIMAL RPLAN DEPENDENCY GRAPHS oDG+)---------\n");
+  printf("Perc dead end states            : %3d /* perc sample states where hFF = infty */\n", 
+	 (int) gdead_end_percentage);
+  printf("Perc successful states          : %3d /* perc sample states presumed not local minimum (ie, at least one oDG+ for the state succeeds) */\n", 
+	 (int) gsuccess_percentage);
+  printf("h+ exit distance bound          : %3d, %6.2f, %3d /* min, mean, max over those states presumed not local minimum */\n", 
+	 gsuccess_percentage > 0 ? gmin_ed_bound : -1,
+	 gsuccess_percentage > 0 ? gmean_ed_bound : -1,
+	 gsuccess_percentage > 0 ? gmax_ed_bound : -1);
+  printf("Perc successful oDG+            : %3d\n", 
+	 goDGplus_num_graphs == 0 ? 0 : (int) (((float) goDGplus_num_successes) / ((float) goDGplus_num_graphs) * 100.0));
+  printf("Perc succ oDG+ t0 RFCempty      : %3d /* no critical t0 deletes */\n", 
+	 goDGplus_num_succ_t0 == 0 ? 0 : (int) (((float) goDGplus_num_succ_t0adequateRFCempty) / ((float) goDGplus_num_succ_t0) * 100.0));
+  printf("Perc succ oDG+ t0 RFCrecovered  : %3d /* critical t0 deletes recovered inside relaxed plan */\n", 
+	 goDGplus_num_succ_t0 == 0 ? 0 : (int) (((float) goDGplus_num_succ_t0adequateRFCrecovered) / ((float) goDGplus_num_succ_t0) * 100.0));
+  printf("Perc succ oDG+-DTG-t no side-eff: %3d /* non-leaf DTG transitions with no side effects */\n", 
+	 goDGplus_num_succ_nonleavesDTGt == 0 ? 0 : (int) (((float) goDGplus_num_succ_nonleavesDTGtnoseff) / ((float) goDGplus_num_succ_nonleavesDTGt) * 100.0));
+  printf("Perc succ oDG+-DTG-t irr del    : %3d /* non-leaf DTG transitions with irrelevant deletes */\n", 
+	 goDGplus_num_succ_nonleavesDTGt == 0 ? 0 : (int) (((float) goDGplus_num_succ_nonleavesDTGtirrdel) / ((float) goDGplus_num_succ_nonleavesDTGt) * 100.0));
+  printf("Perc succ oDG+-DTG-t irr seffdel: %3d /* non-leaf DTG transitions with irrelevant side effect deletes */\n", 
+	 goDGplus_num_succ_nonleavesDTGt == 0 ? 0 : (int) (((float) goDGplus_num_succ_nonleavesDTGtirrseffdel) / ((float) goDGplus_num_succ_nonleavesDTGt) * 100.0));
+  printf("Perc oDG+ cyclic                : %3d /* perc oDG+ cannot be successful because cyclic */\n", 
+	 goDGplus_num_graphs == 0 ? 0 : (int) (((float) goDGplus_num_fail_cyclic) / ((float) goDGplus_num_graphs) * 100.0));
+  printf("Perc oDG+ t0 not Ok             : %3d /* perc oDG+ cannot be successful because deletes of t0 harmful */\n", 
+	 goDGplus_num_graphs == 0 ? 0 : (int) (((float) goDGplus_num_fail_t0notadequate) / ((float) goDGplus_num_graphs) * 100.0));
+  printf("Perc oDG+ support not Ok        : %3d /* perc oDG+ cannot be successful because supporting var DTGs not suitable */\n", 
+	 goDGplus_num_graphs == 0 ? 0 : (int) (((float) goDGplus_num_fail_nonleavesnotadequate) / ((float) goDGplus_num_graphs) * 100.0));
+  fflush(stdout);
+  
+  if ( gcmd_line.output_file ) {
+    if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
+      printf("\nCan't open TorchLight.txt output file!\n\n");
+      exit(1);
+    }
+    fprintf(goutput_file, "----------------------------------------------------------------------------------\n");
+    fprintf(goutput_file, "---APPROXIMATE LOCAL ANALYSIS (USES OPTIMAL RPLAN DEPENDENCY GRAPHS oDG+)---------\n");
+    fprintf(goutput_file, "Perc dead end states            : %3d /* perc sample states where hFF = infty */\n", 
+	    (int) gdead_end_percentage);
+    fprintf(goutput_file, "Perc successful states          : %3d /* perc sample states presumed not local minimum (ie, at least one oDG+ for the state succeeds) */\n", 
+	    (int) gsuccess_percentage);
+    fprintf(goutput_file, "h+ exit distance bound          : %3d, %6.2f, %3d /* min, mean, max over those states presumed not local minimum */\n", 
+	    gsuccess_percentage > 0 ? gmin_ed_bound : -1,
+	    gsuccess_percentage > 0 ? gmean_ed_bound : -1,
+	    gsuccess_percentage > 0 ? gmax_ed_bound : -1);
+    fprintf(goutput_file, "Perc successful oDG+            : %3d\n", 
+	    goDGplus_num_graphs == 0 ? 0 : (int) (((float) goDGplus_num_successes) / ((float) goDGplus_num_graphs) * 100.0));
+    fprintf(goutput_file, "Perc succ oDG+ t0 RFCempty      : %3d /* no critical t0 deletes */\n", 
+	    goDGplus_num_succ_t0 == 0 ? 0 : (int) (((float) goDGplus_num_succ_t0adequateRFCempty) / ((float) goDGplus_num_succ_t0) * 100.0));
+    fprintf(goutput_file, "Perc succ oDG+ t0 RFCrecovered  : %3d /* critical t0 deletes recovered inside relaxed plan */\n", 
+	    goDGplus_num_succ_t0 == 0 ? 0 : (int) (((float) goDGplus_num_succ_t0adequateRFCrecovered) / ((float) goDGplus_num_succ_t0) * 100.0));
+    fprintf(goutput_file, "Perc succ oDG+-DTG-t no side-eff: %3d /* non-leaf DTG transitions with no side effects */\n", 
+	    goDGplus_num_succ_nonleavesDTGt == 0 ? 0 : (int) (((float) goDGplus_num_succ_nonleavesDTGtnoseff) / ((float) goDGplus_num_succ_nonleavesDTGt) * 100.0));
+    fprintf(goutput_file, "Perc succ oDG+-DTG-t irr del    : %3d /* non-leaf DTG transitions with irrelevant deletes */\n", 
+	    goDGplus_num_succ_nonleavesDTGt == 0 ? 0 : (int) (((float) goDGplus_num_succ_nonleavesDTGtirrdel) / ((float) goDGplus_num_succ_nonleavesDTGt) * 100.0));
+    fprintf(goutput_file, "Perc succ oDG+-DTG-t irr seffdel: %3d /* non-leaf DTG transitions with irrelevant side effect deletes */\n", 
+	    goDGplus_num_succ_nonleavesDTGt == 0 ? 0 : (int) (((float) goDGplus_num_succ_nonleavesDTGtirrseffdel) / ((float) goDGplus_num_succ_nonleavesDTGt) * 100.0));
+    fprintf(goutput_file, "Perc oDG+ cyclic                : %3d /* perc oDG+ cannot be successful because cyclic */\n", 
+	    goDGplus_num_graphs == 0 ? 0 : (int) (((float) goDGplus_num_fail_cyclic) / ((float) goDGplus_num_graphs) * 100.0));
+    fprintf(goutput_file, "Perc oDG+ t0 not Ok             : %3d /* perc oDG+ cannot be successful because deletes of t0 harmful */\n", 
+	    goDGplus_num_graphs == 0 ? 0 : (int) (((float) goDGplus_num_fail_t0notadequate) / ((float) goDGplus_num_graphs) * 100.0));
+    fprintf(goutput_file, "Perc oDG+ support not Ok        : %3d /* perc oDG+ cannot be successful because supporting var DTGs not suitable */\n", 
+	    goDGplus_num_graphs == 0 ? 0 : (int) (((float) goDGplus_num_fail_nonleavesnotadequate) / ((float) goDGplus_num_graphs) * 100.0));
+    fclose(goutput_file);
+  }
+
+  /* now output "harmful effects" of t_0 which made oDGplus fail in
+     approximate local analysis. we have to count the same predicate
+     at most once for each operator
+   */
+
+  have_predicate = ( Bool * ) calloc( gnum_predicates, sizeof( Bool ) );
+  gnum_delete_predicates = 0;
+  for ( i = 0; i < gnum_operators; i++ ) {
+    for ( j = 0; j < gnum_predicates; j++ ) {
+      have_predicate[j] = FALSE;
+    }
+    for ( e = goperators[i]->effects; e; e = e->next ) {
+      for ( l = e->effects; l; l = l->next ) {
+	if ( l->negated && !have_predicate[l->fact.predicate] ) {
+	  gnum_delete_predicates++;
+	  have_predicate[l->fact.predicate] = TRUE;
+	}
+      }
+    }
+  }
+
+  printf("\n\n----------------------------------------------------------------------------------\n");
+  printf("---DIAGNOSIS----------------------------------------------------------------------\n");
+  printf("Perc harmful delete effects     : %3d /* perc action effect delete predicates harmful to t0; (may be 0 even if ``Perc oDG+ t0 not Ok''>0: diagnosis does not consider strange cases) */\n",
+	  (int) (((float) goDGplus_num_nonrecovered_RFC_intersects) / ((float) gnum_delete_predicates) * 100.0));
+  fflush(stdout);
+         
+  if ( gcmd_line.output_file ) {
+    if ( (goutput_file = fopen( "TorchLight.txt", "a")) == NULL ) {
+      printf("\nCan't open TorchLight.txt output file!\n\n");
+      exit(1);
+    }
+    fprintf(goutput_file, "----------------------------------------------------------------------------------\n");
+    fprintf(goutput_file, "---DIAGNOSIS----------------------------------------------------------------------\n");
+    fprintf(goutput_file, "Perc harmful delete effects     : %3d /* perc action effect delete predicates harmful to t0; (may be 0 even if ``Perc oDG+ t0 not Ok''>0: diagnosis does not consider strange cases) */\n",
+	    (int) (((float) goDGplus_num_nonrecovered_RFC_intersects) / ((float) gnum_delete_predicates) * 100.0));
+  }
+
+  if ( goDGplus_num_nonrecovered_RFC_intersects > 0 ) {
+    printf("----------------------------------------------------------------------------------\n");
+    printf("Ranked list of harmful effects (op-name, pred-name, frequency):\n");
+
+    if ( gcmd_line.output_file ) {
+      fprintf(goutput_file, "----------------------------------------------------------------------------------\n");
+      fprintf(goutput_file, "Ranked list of harmful effects (op-name, pred-name, frequency):\n");
+    }
+
+    gotone = TRUE;
+    while ( gotone ) {
+      gotone = FALSE;
+      maxw = -1;
+      maxi = -1;
+      for ( i = 0; i < goDGplus_num_nonrecovered_RFC_intersects; i++ ) {	  
+	if ( maxw == -1 || goDGplus_nonrecovered_RFC_intersects_weights[i] > maxw ) {
+	  maxw = goDGplus_nonrecovered_RFC_intersects_weights[i];
+	  maxi = i;
+	}
+      }
+      if ( maxi != -1 ) {
+	gotone = TRUE;
+
+	printf("%s ", goperators[goDGplus_nonrecovered_RFC_intersect_op0s[maxi]]->name);
+	printf("%s ", gpredicates[goDGplus_nonrecovered_RFC_intersect_preds[maxi]]);
+	printf("%6.2f\n",
+	       ((float) goDGplus_nonrecovered_RFC_intersects_weights[maxi]) /
+	       ((float) goDGplus_nonrecovered_RFC_intersects_totalweight) * 100.0);	    
+	
+	if ( gcmd_line.output_file ) {
+	  fprintf(goutput_file, "%s ", goperators[goDGplus_nonrecovered_RFC_intersect_op0s[maxi]]->name);
+	  fprintf(goutput_file, "%s ", gpredicates[goDGplus_nonrecovered_RFC_intersect_preds[maxi]]);
+	  fprintf(goutput_file, "%6.2f\n",
+		  ((float) goDGplus_nonrecovered_RFC_intersects_weights[maxi]) /
+		  ((float) goDGplus_nonrecovered_RFC_intersects_totalweight) * 100.0);	    
+	}
+	
+	for ( j = maxi; j < goDGplus_num_nonrecovered_RFC_intersects-1; j++ ) {
+	  goDGplus_nonrecovered_RFC_intersects_weights[j] = goDGplus_nonrecovered_RFC_intersects_weights[j+1];
+	  goDGplus_nonrecovered_RFC_intersect_op0s[j] = goDGplus_nonrecovered_RFC_intersect_op0s[j+1];
+	  goDGplus_nonrecovered_RFC_intersect_preds[j] = goDGplus_nonrecovered_RFC_intersect_preds[j+1];
+	}
+	  goDGplus_num_nonrecovered_RFC_intersects--;
+      }
+    }
+  }
+
+  printf("----------------------------------------------------------------------------------\n");
+  printf("-------------------------------------------------------------------------------END\n");
+  fflush(stdout);
+
+  if ( gcmd_line.output_file ) {
+    fprintf(goutput_file, "----------------------------------------------------------------------------------\n");
+    fprintf(goutput_file, "-------------------------------------------------------------------------------END\n");
+    fclose(goutput_file);
+  }
+  
 
 
   output_planner_info();
@@ -1790,42 +1440,27 @@ void output_planner_info( void )
 	  grelev_time, gnum_relevant_facts );
   printf( "\n            %7.2f seconds building connectivity graph",
 	  gconn_time );
-  printf( "\n            %7.2f seconds in FD translator generating variables", 
-	  gFDvariables_time );
+  if ( gcmd_line.use_FD ) {
+    printf( "\n            %7.2f seconds in FD translator generating variables", 
+	    gFDvariables_time );
+  } else {
+    printf( "\n            %7.2f seconds reading variables",
+	    gFDvariables_time );
+  }
   printf( "\n            %7.2f seconds preparing support graph and DTGs", 
 	  gSG_DTG_time );
   printf( "\n            %7.2f seconds statically analyzing support graph and DTGs", 
 	  gSG_DTG_static_analyze_time );
   printf( "\n            %7.2f seconds in guaranteed global analysis", 
 	  ganalyze_global_time );
-  if ( gcmd_line.do_lDG ) {
-    printf( "\n            %7.2f seconds in guaranteed local analysis of initial state", 
-	    ganalyze_local_ini_lDG_time );
-  }
-  printf( "\n            %7.2f seconds in approximate local analysis of initial state", 
-	  ganalyze_local_ini_oDGplus_time );
   if ( gcmd_line.num_samples > 0 ) {
     printf( "\n            %7.2f seconds sampling states", 
 	    gsampling_time );
-    if ( gcmd_line.do_lDG ) {
-      printf( "\n            %7.2f seconds in guaranteed local analysis of sample states", 
-	      ganalyze_local_sample_lDG_time );
-    }
     printf( "\n            %7.2f seconds in approximate local analysis of sample states", 
 	    ganalyze_local_sample_oDGplus_time );
-    if ( gcmd_line.run_EHCanalyze ) {
-      printf( "\n            %7.2f seconds in local-monotone Enforced Hill-Climbing analysis of sample states", 
-	      ganalyze_local_sample_monotoneEHC_time );
-    }
   }
   printf( "\nTL TOTAL TIME: %7.2f seconds, of which %7.2f were spent computing relaxed plans for analysis.",
 	  gtempl_time + greach_time + grelev_time + gconn_time + gFDvariables_time + gSG_DTG_time + gSG_DTG_static_analyze_time + ganalyze_global_time + ganalyze_local_ini_lDG_time + ganalyze_local_ini_oDGplus_time + ganalyze_local_sample_lDG_time + ganalyze_local_sample_oDGplus_time, grelaxed_plan_time );
-
-  if ( gcmd_line.run_FF ) {
-    printf( "\nEHC          : %7.2f seconds, success %d, max search depth %d.",
-	    gEHC_time, gEHC_success, gEHC_max_search_depth);
-
-  }  
 
 }
 
@@ -1840,50 +1475,23 @@ void ff_usage( void )
   printf("\nOPTIONS   DESCRIPTIONS\n\n");
   printf("-p <str>    path for operator and fact file\n");
   printf("-o <str>    operator file name\n");
-  printf("-f <str>    fact file name\n\n");
-
-  printf("-s <num>    number of states to be sampled (preset: %d)\n",
-	 gcmd_line.num_samples); 
-  printf("-d <num>    depth of samples (*hFF(ini)) (preset: %d)\n\n",
-	 gcmd_line.depth_samples); 
-
-  printf("-G          do NOT do guaranteed global analysis\n");
-  printf("-L          do NOT do guaranteed local analysis\n");
-  printf("-R          do NOT do SG-root special case handling in Dcost\n");
-  printf("-O          optimize over all choices of op0, x0 in oDG+ (default: stop at first success)\n");
-  printf("-U          prune useless var0, ie var0 not in goal/op-pre\n");
-  printf("-P <num>    level of P+ Replacement strategy (preset: %d)\n",
-	 gcmd_line.replacement_level); 
-  printf("      0     no P+ replacement\n");
-  printf("      1     replace P+_>0 for reduction of R\n");
-  printf("      2     + replace op0 for reduction of R\n");
-  printf("      3     + replace for recovery of RFC facts\n");
-  printf("-S          do not do recoverer-only-relevant-side-effects analysis\n\n");
-
-  printf("-D          do diagnosis\n");
-/*   printf("-G          do not compute and diagnose gDG success rate\n"); */
-  printf("-V          do NOT prune useless var0, ie var0 not in goal/op-pre, in diagnosis\n");
-  printf("-I          in RFC intersect diagnosis, do not try to invert op0\n");
-  printf("-X          in RFC intersect diagnosis, do not ignore exchanged vars\n");
-  printf("-2          diagnose failure separately, by 2nd analysis run only for non-success states\n");
-  printf("-W          do not show case weight in diagnosis\n\n");
-
-  printf("-E          use single-EHC iteration as local analysis technique\n");
-  printf("-Z          run ONLY single-EHC iteration as local analysis technique\n\n");
-  printf("-Q          run global EHC and provide data on success, max search depth\n");
-  printf("-Y          run ONLY global EHC and provide data on success, max search depth\n");
+  printf("-f <str>    fact file name\n");
+  printf("-v <str>    path to finite-domain representation (use with -V, default is \"./GENERATE-VARS/VARIABLES.txt\"\n\n");
 
   printf("-F          produce output data File\n");
+  printf("-V          do NOT use Fast Downward, put finite-domain vars into \"GENERATE-VARS/VARIABLES.txt\"\n");
+  printf("-r <num>    random seed (preset: %d)\n\n",
+	 gcmd_line.random_seed);
+
+  printf("-s <num>    number of states to be sampled (preset: %d)\n\n",
+	 gcmd_line.num_samples); 
+
   printf("-i <num>    run-time information level (preset: %d)\n",
 	 gcmd_line.display_info);
   printf("      0     nothing\n");
   printf("      1     basic output and processing infos\n");
   printf("      2     + detailed analysis infos\n");
   printf("   > 100    various FF debugging infos\n\n");
-
-  printf("-r <num>    random seed (preset: %d)\n\n",
-	 gcmd_line.random_seed);
-  
 
   if ( 0 ) {
     printf("-i <num>    run-time information level( preset: 1 )\n");
@@ -1936,59 +1544,11 @@ Bool process_command_line( int argc, char *argv[] )
     option = *++argv[0];
 
     switch ( option ) {
-    case 'Q':
-      gcmd_line.run_FF = TRUE;
-      break;
-    case 'Y':
-      gcmd_line.run_only_FF = TRUE;
-      break;
-    case 'Z':
-      gcmd_line.run_only_EHCanalyze = TRUE;
-      break;
-    case 'E':
-      gcmd_line.run_EHCanalyze = TRUE;
+    case 'V':
+      gcmd_line.use_FD = FALSE;
       break;
     case 'F':
       gcmd_line.output_file = TRUE;
-      break;
-    case 'R':
-      gcmd_line.do_SG_root = FALSE;
-      break;
-    case 'S':
-      gcmd_line.do_recoverer_only_relevant = FALSE;
-      break;
-    case 'L':
-      gcmd_line.do_lDG = FALSE;
-      break;
-    case 'G':
-      gcmd_line.do_gDG = FALSE;
-      break;
-    case 'I':
-      gcmd_line.do_diagnose_invertop0 = FALSE;
-      break;
-    case 'X':
-      gcmd_line.do_diagnose_ignore_exchangedvars = FALSE;
-      break;
-    case 'U':
-      gcmd_line.prune_useless_var0 = TRUE;
-      break;
-    case 'V':
-      gcmd_line.diagnose_prune_useless_var0 = FALSE;
-      break;
-    case 'D':
-      gcmd_line.do_diagnose = TRUE;
-      break;
-    case '2':
-      gcmd_line.negative_diagnose_all = FALSE;
-      break;
-    case 'O':
-      gcmd_line.optimize_over_op0var0 = TRUE;
-      break;
-/*     case 'G': */
-/*       gcmd_line.do_diagnose_gDG_successrate = FALSE; */
-/*       break; */
-    case 'W':
-      gcmd_line.show_case_weight = FALSE;
       break;
     default:
       if ( --argc && ++argv ) {
@@ -2002,6 +1562,9 @@ Bool process_command_line( int argc, char *argv[] )
 	case 'f':
 	  strncpy( gcmd_line.fct_file_name, *argv, MAX_LENGTH );
 	  break;
+    case 'v':
+      strncpy( gcmd_line.fdr_path, *argv, MAX_LENGTH );
+      break;
 	case 'i':
 	  sscanf( *argv, "%d", &gcmd_line.display_info );
 	  break;
@@ -2014,9 +1577,6 @@ Bool process_command_line( int argc, char *argv[] )
 	case 'r':
 	  sscanf( *argv, "%d", &gcmd_line.random_seed );
 	  break;
-	case 'P':
-	  sscanf( *argv, "%d", &gcmd_line.replacement_level );
-	  break;
 	default:
 	  printf( "\nff: unknown option: %c entered\n\n", option );
 	  return FALSE;
@@ -2027,10 +1587,12 @@ Bool process_command_line( int argc, char *argv[] )
     }
   }
 
-  if ( gcmd_line.replacement_level < 0 || gcmd_line.replacement_level > 3 ) {
-    printf("\nUnknown replacement level %d", gcmd_line.replacement_level);
+
+  if ( gcmd_line.num_samples < 0 ) {
+    printf("\nNumber of samples (now %d) must be >= 1", gcmd_line.num_samples);
     return FALSE;
   }
+
 
   return TRUE;
 

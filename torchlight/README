@@ -1,3 +1,201 @@
+===
+
+SPECIFICATION OF FEATURES: 
+
+(using example call "./torchlight -o domains/rovers/domain.pddl -f domains/rovers/p20.pddl -s 1000 -F")
+
+FULL TorchLight.txt FILE:
+
+START-----------------------------------------------------------------------------
+---META-INFORMATION---------------------------------------------------------------
+Input domain                    : domains/rovers/domain.pddl
+Input problem instance          : domains/rovers/p20.pddl
+Number of sample states         : 1000
+----------------------------------------------------------------------------------
+---DOMAIN TRANSITION GRAPHS (DTG-t: DTG transition)-------------------------------
+Perc vars all DTG-t invertible  :   5
+Perc vars all DTG-t no side-eff :  28 /* all no side effects */
+Perc vars all DTG-t irr side-eff:  31 /* all side effect deletes irrelevant */
+Perc well-behaved leaf vars     :  66 /* support graph leaf vars satisfying global TorchLight criterion */
+Perc well-behaved nonleaf vars  :  21 /* support graph nonleaf vars satisfying global TorchLight criterion */
+Perc DTG-t invertible           :  34
+Perc DTG-t no side-eff          :  32 /* no side effects */
+Perc DTG-t irr side-eff         :  64 /* all side effect deletes irrelevant */
+Perc DTG-t self-irr side-eff    :  64 /* all side effect deletes irrelevant, except for own precond */
+Perc DTG-t irr own-delete       :  58 /* start value of transition is irrelevant */
+----------------------------------------------------------------------------------
+---GUARANTEED GLOBAL ANALYSIS (USES GLOBAL DEPENDENCY GRAPHS gDG)-----------------
+Perc successful gDG             :   0 /* = 100 ==> provably no local minima under h+ */
+h+ exit distance bound          :  -1,  -1.00,  -1 /* min, mean, max over successful gDGs (-1 if perc successful gDG = 0); perc successful gDG = 100 ==> max is a provable upper bound on exit distance under h+ */
+Perc gDG cyclic                 :  67 /* perc gDG cannot be successful because cyclic */
+Perc gDG t0 not Ok              :   0 /* perc gDG cannot be successful because deletes of t0 harmful */
+Perc gDG support not Ok         : 100 /* perc gDG cannot be successful because supporting var DTGs not suitable */
+----------------------------------------------------------------------------------
+---APPROXIMATE LOCAL ANALYSIS (USES OPTIMAL RPLAN DEPENDENCY GRAPHS oDG+)---------
+Perc dead end states            :   0 /* perc sample states where hFF = infty */
+Perc successful states          : 100 /* perc sample states presumed not local minimum (ie, at least one oDG+ for the state succeeds) */
+h+ exit distance bound          :   0,   0.00,   1 /* min, mean, max over those states presumed not local minimum */
+Perc successful oDG+            :  52
+Perc succ oDG+ t0 RFCempty      :  60 /* no critical t0 deletes */
+Perc succ oDG+ t0 RFCrecovered  :   1 /* critical t0 deletes recovered inside relaxed plan */
+Perc succ oDG+-DTG-t no side-eff:  98 /* non-leaf DTG transitions with no side effects */
+Perc succ oDG+-DTG-t irr del    :   5 /* non-leaf DTG transitions with irrelevant deletes */
+Perc succ oDG+-DTG-t irr seffdel:   0 /* non-leaf DTG transitions with irrelevant side effect deletes */
+Perc oDG+ cyclic                :   4 /* perc oDG+ cannot be successful because cyclic */
+Perc oDG+ t0 not Ok             :  13 /* perc oDG+ cannot be successful because deletes of t0 harmful */
+Perc oDG+ support not Ok        :  33 /* perc oDG+ cannot be successful because supporting var DTGs not suitable */
+----------------------------------------------------------------------------------
+---DIAGNOSIS----------------------------------------------------------------------
+Perc harmful delete effects     :  14 /* perc action effect delete predicates harmful to t0; (may be 0 even if ``Perc oDG+ t0 not Ok''>0: diagnosis does not consider strange cases) */
+----------------------------------------------------------------------------------
+Ranked list of harmful effects (op-name, pred-name, frequency):
+TAKE_IMAGE CALIBRATED 100.00
+----------------------------------------------------------------------------------
+-------------------------------------------------------------------------------END
+
+
+COMMENTED FILE WITH EXPLANATIONS:
+
+> START-----------------------------------------------------------------------------
+> ---META-INFORMATION---------------------------------------------------------------
+> Input domain                    : domains/rovers/domain.pddl
+> Input problem instance          : domains/rovers/p20.pddl
+> Number of sample states         : 1000
+> ----------------------------------------------------------------------------------
+> ---DOMAIN TRANSITION GRAPHS (DTG-t: DTG transition)-------------------------------
+> Perc vars all DTG-t invertible  :   5
+> Perc vars all DTG-t no side-eff :  28 /* all no side effects */
+> Perc vars all DTG-t irr side-eff:  31 /* all side effect deletes irrelevant */
+
+As the names suggest: percentage of FDR variables all of whose DTG
+transitions are invertible/have no side effects/have irrelevant side
+effect deletes.
+
+> Perc well-behaved leaf vars     :  66 /* support graph leaf vars satisfying global TorchLight criterion */
+> Perc well-behaved nonleaf vars  :  21 /* support graph nonleaf vars satisfying global TorchLight criterion */
+
+The "support graph" is the causal graph but including only pre-->eff
+dependency edges. The "well-behaved" here comes from simplified
+criteria for the TorchLight analysis to work. These are not described
+in the paper, they come from earlier theory versions. Code:
+
+      if ( !t->irrelevant &&
+	   !t->self_irrelevant_side_effect_deletes &&
+	   !(t->irrelevant_side_effects && t->recoverable_side_effect_deletes) ) {
+	gDTGs[var].LEAF_irrelevant_or_irrelevantseffdel_or_irrelevantseffrecoverableseffdel = FALSE;
+      }
+
+So all transitions t must either be irrelevant (target value
+irrelevant), or have irrelevant side eff deletes except possibly on
+their own precondition, or have irrelevant side effects (these values
+not needed) and recoverable side effect deletes (there's an action
+getting back the deletes). This suffices for the variable to work as
+x0, anywhere. The criterion is out of use.
+
+      if ( !t->irrelevant &&
+	   !(t->invertible && t->no_side_effects) &&
+	   !(t->irrelevant_own_delete && t->self_irrelevant_side_effect_deletes) ) {
+	gDTGs[var].NONLEAF_irrelevant_or_invertiblenoseff_or_irrelevantdeletes = FALSE;
+      }
+
+So all transitions t must either be irrelevant, or invertible with no
+side effs, or have an irrelevant own del (source value) and irrelevant
+side eff deletes. This suffices for the variable to work as a support
+variable, anywhere. In use to avoid more expensive more accurate test
+if applicable.
+
+> Perc DTG-t invertible           :  34
+> Perc DTG-t no side-eff          :  32 /* no side effects */
+> Perc DTG-t irr side-eff         :  64 /* all side effect deletes irrelevant */
+> Perc DTG-t self-irr side-eff    :  64 /* all side effect deletes irrelevant, except for own precond */
+> Perc DTG-t irr own-delete       :  58 /* start value of transition is irrelevant */
+
+Exactly what the names suggest; see explanation of terms above.
+
+> ----------------------------------------------------------------------------------
+> ---GUARANTEED GLOBAL ANALYSIS (USES GLOBAL DEPENDENCY GRAPHS gDG)-----------------
+> Perc successful gDG             :   0 /* = 100 ==> provably no local minima under h+ */
+
+A gDG describes one situation that might arise. See JAIR paper for
+details.
+
+> h+ exit distance bound          :  -1,  -1.00,  -1 /* min, mean, max over successful gDGs (-1 if perc successful gDG = 0); perc successful gDG = 100 ==> max is a provable upper bound on exit distance under h+ */
+
+From each gDG we can derive an upper bound on exit distance under h+
+for the situations descrobed by the gDG. The stats are as explained in
+the comment.
+
+> Perc gDG cyclic                 :  67 /* perc gDG cannot be successful because cyclic */
+
+Cyclic means, the supporting variables have cyclic dependencies.
+
+> Perc gDG t0 not Ok              :   0 /* perc gDG cannot be successful because deletes of t0 harmful */
+
+t0 is the "top transition" we are trying to take to decrease h+.
+
+> Perc gDG support not Ok         : 100 /* perc gDG cannot be successful because supporting var DTGs not suitable */
+
+A suporting var DTG is "Ok" if we can use it in our exit path
+construction.
+
+> ----------------------------------------------------------------------------------
+> ---APPROXIMATE LOCAL ANALYSIS (USES OPTIMAL RPLAN DEPENDENCY GRAPHS oDG+)---------
+> Perc dead end states            :   0 /* perc sample states where hFF = infty */
+> Perc successful states          : 100 /* perc sample states presumed not local minimum (ie, at least one oDG+ for the state succeeds) */
+> h+ exit distance bound          :   0,   0.00,   1 /* min, mean, max over those states presumed not local minimum */
+> Perc successful oDG+            :  52
+
+All these should be clear. oDG+ is the local-approximate variant of
+the gDGs above; a main difference is that they, as well as DTG
+sub-gra[hs considered, are extracted from relaxed plans so are *much*
+more accurate than the very rough over-approximation we get with gDGs
+when considering only the support graph and entire variable DTGs. See
+JAIR paper for details.
+
+> Perc succ oDG+ t0 RFCempty      :  60 /* no critical t0 deletes */
+> Perc succ oDG+ t0 RFCrecovered  :   1 /* critical t0 deletes recovered inside relaxed plan */
+
+"RFC" charcaterizes the relevant set of facts that may be deleted by
+t0.
+
+> Perc succ oDG+-DTG-t no side-eff:  98 /* non-leaf DTG transitions with no side effects */
+> Perc succ oDG+-DTG-t irr del    :   4 /* non-leaf DTG transitions with irrelevant deletes */
+> Perc succ oDG+-DTG-t irr seffdel:   0 /* non-leaf DTG transitions with irrelevant side effect deletes */
+
+This is about the sub-DTGs of the supporting variables: Which fraction
+of transitions in these was Ok for which reason?
+
+> Perc oDG+ cyclic                :   4 /* perc oDG+ cannot be successful because cyclic */
+> Perc oDG+ t0 not Ok             :  13 /* perc oDG+ cannot be successful because deletes of t0 harmful */
+> Perc oDG+ support not Ok        :  33 /* perc oDG+ cannot be successful because supporting var DTGs not suitable */
+
+Here we have stats of reason for failure, exactly as for gDGs above.
+
+> ----------------------------------------------------------------------------------
+> ---DIAGNOSIS----------------------------------------------------------------------
+> Perc harmful delete effects     :  14 /* perc action effect delete predicates harmful to t0; (may be 0 even if ``Perc oDG+ t0 not Ok''>0: diagnosis does not consider strange cases) */
+
+This is about deletes of t0 only. It's basically the RFC set above,
+plus simple sanity filters. We record the (action-schema,
+lifted-predicate) pairs which take part in such filtered RFC sets, as
+well as the frequency in which they do that. As a normalized feature,
+I simply give back here the percentage of (action-schema,
+lifted-predicate) pairs which are recorded this way and thus can be
+considered as "harmful delete effects". Below, just for the record, is
+the actual list of the recorded (action-schema, lifted-predicate)
+pairs.
+
+> ----------------------------------------------------------------------------------
+> Ranked list of harmful effects (op-name, pred-name, frequency):
+> TAKE_IMAGE CALIBRATED 100.00
+> ----------------------------------------------------------------------------------
+> -------------------------------------------------------------------------------END
+
+
+
+
+===
+
 Type "make" to obtain the executable "torchlight". This program is
 based on FF, and takes the basic arguments (PDDL files) in the same
 way. Run without arguments to obtain usage instructions. The default

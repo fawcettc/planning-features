@@ -1,23 +1,20 @@
 
 
-/*********************************************************************
- * (C) Copyright 2010 INRIA, France
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- * 
- *********************************************************************/
+/*
+ * THIS SOURCE CODE IS SUPPLIED  ``AS IS'' WITHOUT WARRANTY OF ANY KIND, 
+ * AND ITS AUTHOR AND THE JOURNAL OF ARTIFICIAL INTELLIGENCE RESEARCH 
+ * (JAIR) AND JAIR'S PUBLISHERS AND DISTRIBUTORS, DISCLAIM ANY AND ALL 
+ * WARRANTIES, INCLUDING BUT NOT LIMITED TO ANY IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, AND
+ * ANY WARRANTIES OR NON INFRINGEMENT.  THE USER ASSUMES ALL LIABILITY AND
+ * RESPONSIBILITY FOR USE OF THIS SOURCE CODE, AND NEITHER THE AUTHOR NOR
+ * JAIR, NOR JAIR'S PUBLISHERS AND DISTRIBUTORS, WILL BE LIABLE FOR 
+ * DAMAGES OF ANY KIND RESULTING FROM ITS USE.  Without limiting the 
+ * generality of the foregoing, neither the author, nor JAIR, nor JAIR's
+ * publishers and distributors, warrant that the Source Code will be 
+ * error-free, will operate without interruption, or will meet the needs 
+ * of the user.
+ */
 
 
 /*********************************************************************
@@ -105,8 +102,6 @@ void analyze_global( void )
 
 {
 
-  static Bool fc = TRUE;
-
   Bool nolm = TRUE;
   Bool max_ed_bound = TRUE;
   int ed_bound = 0;
@@ -123,24 +118,18 @@ void analyze_global( void )
 
   int bbb = 0, aaa = 0;
 
+  /* Joerg2014: new flag, to remember that one of the 3 criteria
+     failed, while continuing in order to keep stats on which of the
+     others would fail as well.
+  */
+  Bool failed;
 
-
-  if ( fc ) {
-    ggDG_responsible_var0s = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    ggDG_responsible_op0s = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    ggDG_responsible_op0var0s_weights = ( int * ) 
-      calloc(gnum_variables * gnum_operators, sizeof( int ));
-    for ( i = 0; i < gnum_variables * gnum_operators; i++ ) {
-      ggDG_responsible_op0var0s_weights[i] = 0;
-    }
-    ggDG_num_responsible_op0var0s = 0;
-
-    fc = FALSE;
-  }
-
-
+  /* Joerg2014: make stats over this as well. seems a useful feature,
+     even if success rate is < 100%
+  */
+  int here_min_ed_bound = -1;
+  float here_mean_ed_bound = 0;
+  int here_max_ed_bound = -1;
 
 /*   /\* preliminary version without gDGs, just testing the simple */
 /*    * sufficient criteria */
@@ -172,8 +161,6 @@ void analyze_global( void )
   gsuccess = FALSE;
   ged_bound = -1;
 
-
-
   /* gDG - based!
    *
    * Look at all gDGs -- for each goal var and non-irrelevant
@@ -183,6 +170,10 @@ void analyze_global( void )
 
   ggDG_num_graphs = 0;
   ggDG_num_successes = 0;
+
+  ggDG_num_fail_cyclic = 0; /* Joerg2014: new feature */
+  ggDG_num_fail_t0notadequate = 0; /* Joerg2014: new feature */
+  ggDG_num_fail_nonleavesnotadequate = 0; /* Joerg2014: new feature */
 
 
 /*   for ( var0 = 0; var0 < gnum_variables; var0++ ) { */
@@ -216,55 +207,44 @@ void analyze_global( void )
        */
       ggDG_num_graphs++;
 
+      /* Joerg2014: new flag, to remember that one of the 3 criteria
+	 failed, while continuing in order to keep stats on which of the
+	 others would fail as well.
+      */
+      failed = FALSE;
+
       if ( !construct_gDG( var0, t0 ) ) {
 	/* got a cycle!
 	 */
 /* 	printf("\ncycle!"); */
 	nolm = FALSE;
 	max_ed_bound = FALSE;
-	if ( gcmd_line.do_diagnose_gDG_successrate ) {
-	  /* for gDG percentage analysis, need to keep running this!
-	   */
-	  continue;
-	} else {
-	  break;
-	}
+	ggDG_num_fail_cyclic++; /* Joerg2014: new feature */
+	/* for gDG percentage analysis, need to keep running this!
+	 */
+	/* Joerg2014: also execute the two tests below, to be able
+	   to record whether or not they would fail as well
+	*/
+	/* continue; */
+	failed = TRUE;	
       }
 
-      if ( !gcmd_line.do_recoverer_only_relevant ) {
-	if ( !t0->self_irrelevant_side_effect_deletes &&
-	     !(t0->irrelevant_side_effects && t0->recoverable_side_effect_deletes) &&
-	     !t0->replacable_side_effect_deletes ) {
-	  /* t0 does not qualify
-	   */
-	  /* 	printf("\nt0 no qualify!"); */
-	  nolm = FALSE;
-	  max_ed_bound = FALSE;
-	  if ( gcmd_line.do_diagnose_gDG_successrate ) {
-	    /* for gDG percentage analysis, need to keep running this!
-	     */
-	    continue;
-	  } else {
-	    break;
-	  }
-	}
-      } else {
-	if ( !t0->self_irrelevant_side_effect_deletes &&
-	     !(t0->recoverer_only_relevant_side_effects && t0->recoverable_side_effect_deletes) &&
-	     !t0->replacable_side_effect_deletes ) {
-	  /* t0 does not qualify
-	   */
-	  /* 	printf("\nt0 no qualify!"); */
-	  nolm = FALSE;
-	  max_ed_bound = FALSE;
-	  if ( gcmd_line.do_diagnose_gDG_successrate ) {
-	    /* for gDG percentage analysis, need to keep running this!
-	     */
-	    continue;
-	  } else {
-	    break;
-	  }
-	}
+      if ( !t0->self_irrelevant_side_effect_deletes &&
+	   !(t0->recoverer_only_relevant_side_effects && t0->recoverable_side_effect_deletes) &&
+	   !t0->replacable_side_effect_deletes ) {
+	/* t0 does not qualify
+	 */
+	/* 	printf("\nt0 no qualify!"); */
+	nolm = FALSE;
+	max_ed_bound = FALSE;
+	ggDG_num_fail_t0notadequate++; /* Joerg2014: new feature */
+	/* for gDG percentage analysis, need to keep running this!
+	 */
+	/* Joerg2014: also execute the two tests below, to be able
+	   to record whether or not they would fail as well
+	*/
+	/* continue; */
+	failed = TRUE;	
       }
 
       if ( !SG_fullDTGs_INsubgraph_nonleafs_qualifies( var0, t0 ) ) {
@@ -274,64 +254,39 @@ void analyze_global( void )
 /* 	printf("\nno qualify!"); */
 	nolm = FALSE;
 	max_ed_bound = FALSE;
-	if ( gcmd_line.do_diagnose_gDG_successrate ) {
-	  /* for gDG percentage analysis, need to keep running this!
-	   */
-	  continue;
-	} else {
-	  break;
-	}
+	ggDG_num_fail_nonleavesnotadequate++; /* Joerg2014: new feature */
+	/* for gDG percentage analysis, need to keep running this!
+	 */
+	/* Joerg2014: do symmetrically to above 2 cases, for clarity.
+	*/
+	/* continue; */
+	failed = TRUE;
+      }
+
+      if ( failed ) {
+	continue;
       }
 
       ggDG_num_successes++;
-
-      if ( gcmd_line.do_diagnose_gDG_successrate ) {
-	/* record this success for diagnosis!
-	 */
-	my_a = gop_conn[t0->rop].action;
-	if ( my_a->norm_operator ) {
-	  my_o = my_a->norm_operator->operator;
-	} else {
-	  if ( my_a->pseudo_action ) {
-	    my_o = my_a->pseudo_action->operator;
-	  } else {
-	    printf("\ngDG: my_a has neither norm op nor pseudo act??\n\n");
-	    exit(1);
-	  }
-	}
-	for ( i = 0; i < ggDG_num_responsible_op0var0s; i++ ) {
-	  if ( ggDG_responsible_var0s[i] == var0 &&
-	       goperators[ggDG_responsible_op0s[i]] == my_o ) {
-	    break;
-	  }
-	}
-	if ( i == ggDG_num_responsible_op0var0s ) {
-	  ggDG_responsible_var0s[ggDG_num_responsible_op0var0s] = var0;
-	  for ( j = 0; j < gnum_operators; j++ ) {
-	    if ( goperators[j] == my_o ) {
-	      break;
-	    }
-	  }
-	  if ( j == gnum_operators ) {
-	    printf("\ndidn't find my_o operator??\n\n");
-	    exit(1);
-	  }
-	  ggDG_responsible_op0s[ggDG_num_responsible_op0var0s] = j;
-	  ggDG_responsible_op0var0s_weights[ggDG_num_responsible_op0var0s] = 1;
-	  ggDG_num_responsible_op0var0s++;
-	} else {
-	  ggDG_responsible_op0var0s_weights[i]++;
-	}
-      } /* endif want gDG success rate diagnosis */      
 
       new_ed_bound = SG_fullDTGs_INsubgraph_Dcost( var0 );
       if ( t0->self_irrelevant_side_effect_deletes ||
 	   t0->replacable_side_effect_deletes ) {
 	new_ed_bound--;
       }
+
       if ( ed_bound < new_ed_bound ) {
 	ed_bound = new_ed_bound;
       }
+
+      if ( here_min_ed_bound == -1 || new_ed_bound < here_min_ed_bound ) {
+	here_min_ed_bound = new_ed_bound;
+      }
+      here_mean_ed_bound += new_ed_bound;
+      if ( here_max_ed_bound == -1 || new_ed_bound > here_max_ed_bound ) {
+	here_max_ed_bound = new_ed_bound;
+      }
+
     } /* endfor trans0 over t0s */
 
     if ( !gcmd_line.do_diagnose_gDG_successrate ) {
@@ -356,6 +311,14 @@ void analyze_global( void )
 /*     printf("\n========================gDG GLOBAL ANALYSIS: h+ exit distance bound %d!\n", */
 /* 	   ed_bound); */
   }
+
+  gmin_ed_bound = here_min_ed_bound;
+  if ( ggDG_num_successes > 0 ) {
+    gmean_ed_bound = (int) ((float) here_mean_ed_bound) / ((float) ggDG_num_successes);
+  } else {
+    gmean_ed_bound = -1;
+  }
+  gmax_ed_bound = here_max_ed_bound;
 
 }
 
@@ -584,7 +547,6 @@ Bool construct_gDG( int var0, DTGTransition *t0 )
     current_node++;
   }
 
-  gchecking_acyclic_for = 1;
   result = SG_INsubgraph_acyclic();
 
 /*   print_SG(); */
@@ -710,13 +672,6 @@ void analyze_local_lDG( State *s )
     s_on_var = ( int * ) calloc(gnum_variables, sizeof( int ));
 
     glDG_num_successes = 0;
-
-    glDG_responsible_var0s = ( int * ) calloc(gnum_variables, sizeof( int ));
-    glDG_responsible_var0s_weights = ( int * ) calloc(gnum_variables, sizeof( int ));
-    for ( i = 0; i < gnum_variables; i++ ) {
-      glDG_responsible_var0s_weights[i] = 0;
-    }
-    glDG_num_responsible_var0s = 0;
 
     fc = FALSE;
   }
@@ -948,20 +903,8 @@ void analyze_local_lDG( State *s )
     gsuccess = TRUE;
 
     glDG_num_successes++;
-
-    for ( i = 0; i < glDG_num_responsible_var0s; i++ ) {
-      if ( glDG_responsible_var0s[i] == responsible_var0 ) {
-	break;
-      }
-    }
-    if ( i == glDG_num_responsible_var0s ) {
-      glDG_responsible_var0s[glDG_num_responsible_var0s] = responsible_var0;
-      glDG_responsible_var0s_weights[glDG_num_responsible_var0s] = 1;
-      glDG_num_responsible_var0s++;
-    } else {
-      glDG_responsible_var0s_weights[i]++;
-    }
   }
+
   if ( max_ed_bound ) {
     ged_bound = ed_bound;
   }
@@ -1207,9 +1150,6 @@ Bool construct_lDG( int *s_on_var, int var0, DTGTransition *t0 )
     }
   }
 
-
-
-  gchecking_acyclic_for = 2;
   result = SG_INsubgraph_acyclic();
 
   return result;
@@ -1269,11 +1209,6 @@ void analyze_samples_local_lDG( void )
 
   for ( i = 0; i < gcmd_line.num_samples; i++ ) {
 
-    if ( gcmd_line.negative_diagnose_all ) {
-      gdo_negative_diagnosis = TRUE;
-    } else {
-      gdo_negative_diagnosis = FALSE;
-    }
     analyze_local_lDG( &(gsample_states[i]) );
 
     if ( gsuccess ) {
@@ -1289,13 +1224,6 @@ void analyze_samples_local_lDG( void )
 
       mean_ed_bound += ged_bound;
       
-    } else {
-      if ( !gcmd_line.negative_diagnose_all ) {
-	/* now diagnose this state!
-	 */
-	gdo_negative_diagnosis = TRUE;
-	analyze_local_lDG( &(gsample_states[i]) );
-      }
     }
 
     if ( gdead_end ) {

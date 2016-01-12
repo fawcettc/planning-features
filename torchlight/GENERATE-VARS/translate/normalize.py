@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-# -*- coding: latin-1 -*-
 
 import copy
 
@@ -24,8 +23,7 @@ class PreconditionProxy(ConditionProxy):
     def build_rules(self, rules):
         action = self.owner
         rule_head = get_action_predicate(action)
-        rule_body = list(condition_to_rule_body(action.parameters,
-                                                self.condition))
+        rule_body = condition_to_rule_body(action.parameters, self.condition)
         rules.append((rule_body, rule_head))
     def get_type_map(self):
         return self.owner.type_map
@@ -64,9 +62,10 @@ class AxiomConditionProxy(ConditionProxy):
     def build_rules(self, rules):
         axiom = self.owner
         app_rule_head = get_axiom_predicate(axiom)
-        app_rule_body = list(condition_to_rule_body(axiom.parameters, self.condition))
+        app_rule_body = condition_to_rule_body(axiom.parameters, self.condition)
         rules.append((app_rule_body, app_rule_head))
-        eff_rule_head = pddl.Atom(axiom.name, [par.name for par in axiom.parameters])
+        params = axiom.parameters[:axiom.num_external_parameters]
+        eff_rule_head = pddl.Atom(axiom.name, [par.name for par in params])
         eff_rule_body = [app_rule_head]
         rules.append((eff_rule_body, eff_rule_head))
     def get_type_map(self):
@@ -89,9 +88,8 @@ class GoalConditionProxy(ConditionProxy):
         # (see substitute_complicated_goal)
         assert False, "Disjunctive goals not (yet) implemented."
     def build_rules(self, rules):
-        rule_head_name = "@goal-reachable"
         rule_head = pddl.Atom("@goal-reachable", [])
-        rule_body = list(condition_to_rule_body([], self.condition))
+        rule_body = condition_to_rule_body([], self.condition)
         rules.append((rule_body, rule_head))
     def get_type_map(self):
         # HACK!
@@ -142,7 +140,7 @@ def remove_universal_quantifiers(task):
         # Uses new_axioms_by_condition and type_map from surrounding scope.
         if isinstance(condition, pddl.UniversalCondition):
             axiom_condition = condition.negate()
-            parameters = axiom_condition.free_variables()
+            parameters = sorted(axiom_condition.free_variables())
             axiom = new_axioms_by_condition.get(axiom_condition)
             if not axiom:
                 typed_parameters = [pddl.TypedObject(v, type_map[v]) for v in parameters]
@@ -263,6 +261,53 @@ def move_existential_quantifiers(task):
         if proxy.condition.has_existential_part():
             proxy.set(recurse(proxy.condition).simplified())
 
+
+# [5a] Drop existential quantifiers from axioms, turning them
+#      into parameters.
+
+def eliminate_existential_quantifiers_from_axioms(task):
+    # Note: This is very redundant with the corresponding method for
+    # actions and could easily be merged if axioms and actions were
+    # unified.
+    for axiom in task.axioms:
+        precond = axiom.condition
+        if isinstance(precond, pddl.ExistentialCondition):
+            # Copy parameter list, since it can be shared with
+            # parameter lists of other versions of this axiom (e.g.
+            # created when splitting up disjunctive preconditions).
+            axiom.parameters = list(axiom.parameters)
+            axiom.parameters.extend(precond.parameters)
+            axiom.condition = precond.parts[0]
+
+
+# [5b] Drop existential quantifiers from action preconditions,
+#      turning them into action parameters (that don't form part of the
+#      name of the action).
+
+def eliminate_existential_quantifiers_from_preconditions(task):
+    for action in task.actions:
+        precond = action.precondition
+        if isinstance(precond, pddl.ExistentialCondition):
+            # Copy parameter list, since it can be shared with
+            # parameter lists of other versions of this action (e.g.
+            # created when splitting up disjunctive preconditions).
+            action.parameters = list(action.parameters)
+            action.parameters.extend(precond.parameters)
+            action.precondition = precond.parts[0]
+
+# [5c] Eliminate existential quantifiers from effect conditions
+#
+# For effect conditions, we replace "when exists(x, phi) then e" with
+# "forall(x): when phi then e.
+def eliminate_existential_quantifiers_from_conditional_effects(task):
+    for action in task.actions:
+        for effect in action.effects:
+            condition = effect.condition
+            if isinstance(condition, pddl.ExistentialCondition):
+                effect.parameters = list(effect.parameters)
+                effect.parameters.extend(condition.parameters)
+                effect.condition = condition.parts[0]
+
 def substitute_complicated_goal(task):
     goal = task.goal
     if isinstance(goal, pddl.Literal):
@@ -276,15 +321,45 @@ def substitute_complicated_goal(task):
     new_axiom = task.add_axiom([], goal)
     task.goal = pddl.Atom(new_axiom.name, new_axiom.parameters)
 
-# Combine Steps [1], [2], [3], [4]
+# Combine Steps [1], [2], [3], [4], [5] and do some additional verification
+# that the task makes sense.
+
 def normalize(task):
     remove_universal_quantifiers(task)
     substitute_complicated_goal(task)
     build_DNF(task)
     split_disjunctions(task)
     move_existential_quantifiers(task)
+    eliminate_existential_quantifiers_from_axioms(task)
+    eliminate_existential_quantifiers_from_preconditions(task)
+    eliminate_existential_quantifiers_from_conditional_effects(task)
 
-# [5] Build rules for exploration component.
+    verify_axiom_predicates(task)
+
+def verify_axiom_predicates(task):
+    # Verify that derived predicates are not used in :init or
+    # action effects.
+    axiom_names = set()
+    for axiom in task.axioms:
+        axiom_names.add(axiom.name)
+
+    for fact in task.init:
+        # Note that task.init can contain the assignment to (total-cost)
+        # in addition to regular atoms.
+        if getattr(fact, "predicate", None) in axiom_names:
+            raise SystemExit(
+                "error: derived predicate %r appears in :init fact '%s'" %
+                (fact.predicate, fact))
+
+    for action in task.actions:
+        for effect in action.effects:
+            if effect.literal.predicate in axiom_names:
+                raise SystemExit(
+                    "error: derived predicate %r appears in effect of action %r" %
+                    (effect.literal.predicate, action.name))
+
+
+# [6] Build rules for exploration component.
 def build_exploration_rules(task):
     result = []
     for proxy in all_conditions(task):
@@ -292,23 +367,31 @@ def build_exploration_rules(task):
     return result
 
 def condition_to_rule_body(parameters, condition):
+    result = []
     for par in parameters:
-        yield pddl.Atom(par.type, [par.name])
+        result.append(par.get_atom())
     if not isinstance(condition, pddl.Truth):
         if isinstance(condition, pddl.ExistentialCondition):
             for par in condition.parameters:
-                yield pddl.Atom(par.type, [par.name])
+                result.append(par.get_atom())
             condition = condition.parts[0]
         if isinstance(condition, pddl.Conjunction):
             parts = condition.parts
         else:
             parts = (condition,)
         for part in parts:
-            assert isinstance(part, pddl.Literal), "Condition not normalized"
+            if isinstance(part, pddl.Falsity):
+                # Use an atom in the body that is always false because
+                # it is not initially true and doesn't occur in the
+                # head of any rule.
+                return [pddl.Atom("@always-false", [])]
+            assert isinstance(part, pddl.Literal), "Condition not normalized: %r" % part
             if not part.negated:
-                yield part
+                result.append(part)
+    return result
 
 if __name__ == "__main__":
-    task = pddl.open()
+    import pddl_parser
+    task = pddl_parser.open()
     normalize(task)
     task.dump()
