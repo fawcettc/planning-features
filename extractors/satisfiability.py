@@ -150,8 +150,8 @@ class SATFeatureExtractor(FeatureExtractor):
     def extract(self, domain_path, instance_path):
         features = self.default_features()
 
-        path_to_mp = "%s/sat/Mp" % (self.abs_script_directory)
-        mp_command = [path_to_mp, "-F", "10", "-T", "10", "-O", "-b", "translatedInstance", domain_path, instance_path]
+        path_to_mp = "%s/sat/madagascar/Mp" % (self.abs_script_directory)
+        mp_command = [path_to_mp, "-m", str(self.memory_limit), "-F", "10", "-T", "10", "-O", "-b", "translatedInstance", domain_path, instance_path]
 
         successful = False
 

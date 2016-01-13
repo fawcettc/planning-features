@@ -1,0 +1,4 @@
+rm -f zDATE zPRINTDATE
+date '+ %d/%m/20%y %H:%M:%S");' > zDATE
+cat zPREF zDATE > zPRINTDATE
+rm -f zDATE

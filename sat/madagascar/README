@@ -1,0 +1,17 @@
+
+2010, 2011, 2012, 2013, 2014 (C) Jussi Rintanen
+
+
+Compilation:
+   Choose between M, Mp and MpC by commenting/uncommenting the lines for
+   VERSION and EXECUTABLE in Makefile
+   make
+
+The command line for the executables consist of a number of options and
+the names of input file names. With an empty command line you get the list
+of options together with information on the default configuration.
+
+MpC often consumes all available memory, so it is critical to make sure that
+-m N flag is set sensibly. Too high values lead to paging, and too low values
+may mean that plans are not found. The default can be adjusted in main.c as
+the default value of the flagMemoryLimit variable.
