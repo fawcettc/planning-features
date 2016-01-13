@@ -1,0 +1,11 @@
+2003-2016 (c) Alfonso Gerevini, Alessandro Saetti and Ivan Serina
+
+Dipartimento di Elettronica per l'Automazione
+Universita' di Brescia
+Via Branze 38, I-25123, Brescia, Italy
+{gerevini,saetti,serina}@ing.unibs.it
+http://lpg.ing.unibs.it/
+
+The code of LPG-td is provided for research purposes only, in the
+hope that it will be useful, but WITHOUT ANY WARRANTY. Commercial
+users must contact the authors for licensing arrangement.
