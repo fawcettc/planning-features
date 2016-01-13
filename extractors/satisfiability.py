@@ -160,7 +160,7 @@ class SATFeatureExtractor(FeatureExtractor):
 
             cnf_file = "%s/translatedInstance.010.cnf" % (output_directory)
             if os.path.exists(cnf_file) and os.path.isfile(cnf_file):
-                path_to_zilla_extractor = "%s/sat/bin/featuresSAT12" % (self.abs_script_directory)
+                path_to_zilla_extractor = "%s/sat/satzilla/featuresSAT12" % (self.abs_script_directory)
                 zilla_command = [path_to_zilla_extractor, "-base", "-sp", "-dia", "-cl", "-ls", "-lobjois", "translatedInstance.010.cnf", "MpSAT-features.csv"]
 
                 self.execute_command_with_runsolver(zilla_command, output_directory, None)
