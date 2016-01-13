@@ -9,6 +9,11 @@
 
     Copyright (C) 2013-2016 Chris Fawcett (fawcettc@cs.ubc.ca)
 
+    LPG, Fast Downward, Torchlight, Mp, SATzilla and runsolver appear with permission from their
+    respective authors, with their own licenses. Please see the respective
+    source folders for that information.
+
+
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
     published by the Free Software Foundation, either version 3 of the
@@ -37,7 +42,7 @@ import extractors
 __version__ = 0.1
 __authors__ = 'Chris Fawcett'
 __date__ = '2013-11-15'
-__updated__ = '2015-12-18'
+__updated__ = '2016-01-12'
 
 __default_mem_limit__ = 6144
 __default_per_extraction_time_limit__ = 1800
@@ -156,25 +161,10 @@ if __name__ == "__main__":
     program_update_date = str(__updated__)
     program_msg = "%%(prog)s %s (%s)" % (program_version, program_update_date)
     program_shortmsg = __import__("__main__").__doc__.split("\n")[1]
-    program_license = '''%s
-        Created by %s on %s.
-        Copyright 2015 - TBD INSERT COPYRIGHT INFO. All rights reserved.
-
-        Licensed under TBD INSERT LICENSE INFO
-
-        LPG, Fast Downward, Torchlight and runsolver appear with permission from their
-        respective authors, with their own licenses. Please see the respective
-        source folders for that information.
-
-        Distributed on an "AS IS" basis without warranties or conditions
-        of any kind, either expressed or implied.
-
-        USAGE
-    ''' % (program_shortmsg, str(__authors__), str(__date__))
 
     abs_script_directory = os.path.abspath(os.path.dirname(sys.argv[0]))
 
-    parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter, add_help=True)
+    parser = ArgumentParser(description=program_shortmsg, formatter_class=RawDescriptionHelpFormatter, add_help=True)
 
     parser.add_argument("--runsolver-path", dest="runsolver", default=abs_script_directory+"/runsolver/runsolver", help="path to the runsolver binary (used for enforcing runtime and memory limits)")
     parser.add_argument("--mem-limit", dest="mem_limit", default=__default_mem_limit__, type=int, help="memory limit for extraction, in MiB")
