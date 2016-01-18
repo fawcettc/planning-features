@@ -2,3 +2,10 @@
 *.o
 *.so
 *.a
+
+fast-downward/preprocess/preprocess
+fast-downward/search/downward-1
+fast-downward/search/downward-2
+fast-downward/search/downward-4
+runsolver/runsolver
+sat/madagascar/Mp
