@@ -24,7 +24,7 @@ Please inspect the appropriate subdirectories closely for details.
  * In order to extract features for a given PDDL domain and problem instance, simply execute the top-level extractor script
    with the domain and instance as arguments:
 
-   `$ python &lt;path to extractor&gt;/planning-features/extract_planning_features.py --domain-file &lt;path to domain&gt; --instance-file &lt;path to problem instance&gt;`
+   `$ python <path to extractor>/planning-features/extract_planning_features.py --domain-file <path to domain> --instance-file <path to problem instance>`
 
  * This will extract all features and print the result to standard output in CSV format \(see below\)
 
