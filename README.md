@@ -11,11 +11,11 @@ and features obtained from short *probing* runs of several state-of-the-art plan
 
 Feature values can be output in CSV and/or JSON format, either to a file or to standard output.
 
-For \(somewhat\) detailed installation instructions, see INSTALLATION.md
+For \(somewhat\) detailed installation instructions, see `INSTALLATION.md`
 
-If you would like to contribute to the project, please have a look at CONTRIBUTING.md
+If you would like to contribute to the project, please have a look at `CONTRIBUTING.md`
 
-This project is distributed under the Affero General Public License v3, for more information see LICENSE-AGPL-v3.txt.
+This project is distributed under the Affero General Public License v3, for more information see `LICENSE-AGPL-v3.txt`.
 Component projects and dependencies are included with permission of their authors, often with their own license terms.
 Please inspect the appropriate subdirectories closely for details.
 
@@ -30,7 +30,7 @@ Please inspect the appropriate subdirectories closely for details.
 
 ### JSON output
 
- * Use the \-\-json-output-file argument to pass a path where computed feature values should be stored in JSON format.
+ * Use the `--json-output-file` argument to pass a path where computed feature values should be stored in JSON format.
  * This file will be created anew rather than being appended to, and will currently **be overwritten** if it already exists.
  * The JSON format is:
 
@@ -53,19 +53,19 @@ Please inspect the appropriate subdirectories closely for details.
 
 ### CSV output
 
- * Use the \-\-csv-output-file argument to pass a path where computed feature values should be stored in CSV format.
+ * Use the `--csv-output-file` argument to pass a path where computed feature values should be stored in CSV format.
  * This file will be created anew rather than being appended to, and will currently **be overwritten** if it already exists.
- * There is a header printed \(unless \-\-no-csv-header is used\), followed by one row per problem instance.
+ * There is a header printed \(unless `--no-csv-header` is used\), followed by one row per problem instance.
  * Column format is `problem instance,feature1,feature2,feature3,feature4,feature5,...,featureN`
- * Problem instance will be \"-delimited, the remaining numeric columns have no delimiter
+ * Problem instance will be "-delimited, the remaining numeric columns have no delimiter
 
 ### Bulk extraction
 
  * If you want to extract features for more than one &lt;problem, domain&gt; pair at a time, you may replace the
-   --domain-file and --instance-file arguments with a single --bulk-extraction-file argument with a file path containing
+   `--domain-file` and `--instance-file` arguments with a single `--bulk-extraction-file` argument with a file path containing
    the &lt;problem, domain&gt; pairs.
  * This file should be in CSV format, with the domain path in column 1 and problem instance in column 2.
- * A header row is assumed, and the paths in each column should be \"-delimited
+ * A header row is assumed, and the paths in each column should be "-delimited
 
 ### Contributors
 
@@ -79,7 +79,9 @@ Please inspect the appropriate subdirectories closely for details.
 ### Papers
 
  * *Improved Features for Runtime Prediction of Domain-Independent Planners*
+
    Chris Fawcett, Mauro Vallati, Frank Hutter, Joerg Hoffmann, Holger H. Hoos, Kevin Leyton-Brown
+
    Proceedings of the 24th International Conference on Automated Planning and Scheduling \(ICAPS-14\), 2014.
 
 ### Third-party components
