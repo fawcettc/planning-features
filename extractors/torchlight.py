@@ -86,7 +86,6 @@ class TorchlightFeatureExtractor(FeatureExtractor):
 
     def extract_features(self, output):
         torchlight_features = {}
-        print "torchlight output %s" % output
 
         success_percentage_match = re.search("Perc successful gDG\s+:\s+([0-9\.]*)\s+\/\*", output)
         if success_percentage_match:
