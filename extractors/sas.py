@@ -1169,6 +1169,19 @@ class SASFeatureExtractor(FeatureExtractor):
                 dtg_stddev_incoming_edge_weight_sum_per_vertex = math.sqrt(dtg_variance_incoming_edge_weight_sum_per_vertex)
                 dtg_stddev_outgoing_edge_weight_sum_per_vertex = math.sqrt(dtg_variance_outgoing_edge_weight_sum_per_vertex)
 
+            # handle the 0-incoming and 0-outgoing edges case for these vars
+            if dtg_max_incoming_edges_per_vertex == None:
+                dtg_max_incoming_edges_per_vertex = 0.0
+
+            if dtg_max_incoming_edge_weight_sum_per_vertex == None:
+                dtg_max_incoming_edge_weight_sum_per_vertex = 0.0
+
+            if dtg_max_outgoing_edges_per_vertex == None:
+                dtg_max_outgoing_edges_per_vertex = 0.0
+
+            if dtg_max_outgoing_edge_weight_sum_per_vertex == None:
+                dtg_max_outgoing_edge_weight_sum_per_vertex = 0.0
+
             # CG
             line = f.readline().lstrip().rstrip()
             if line != "begin_CG":
@@ -1439,27 +1452,31 @@ class SASFeatureExtractor(FeatureExtractor):
 
                 sas_graph_features['sasCenamorCGMaxIncomingEdgesPerVariable'] = cg_max_incoming_edges_per_variable
                 sas_graph_features['sasCenamorCGMeanIncomingEdgesPerVariable'] = cg_mean_incoming_edges_per_variable
-                sas_graph_features['sasCenamorCGStddevIncomingEdgesPerVariable'] = cg_stddev_incoming_edges_per_variable
 
                 sas_graph_features['sasCenamorCGMaxOutgoingEdgesPerVariable'] = cg_max_outgoing_edges_per_variable
                 sas_graph_features['sasCenamorCGMeanOutgoingEdgesPerVariable'] = cg_mean_outgoing_edges_per_variable
-                sas_graph_features['sasCenamorCGStddevOutgoingEdgesPerVariable'] = cg_stddev_outgoing_edges_per_variable
 
                 sas_graph_features['sasCenamorCGMaxIncomingEdgeWeightSumPerVariable'] = cg_max_incoming_edge_weight_sum_per_variable
                 sas_graph_features['sasCenamorCGMeanIncomingEdgeWeightSumPerVariable'] = cg_mean_incoming_edge_weight_sum_per_variable
-                sas_graph_features['sasCenamorCGStddevIncomingEdgeWeightSumPerVariable'] = cg_stddev_incoming_edge_weight_sum_per_variable
 
                 sas_graph_features['sasCenamorCGMaxOutgoingEdgeWeightSumPerVariable'] = cg_max_outgoing_edge_weight_sum_per_variable
                 sas_graph_features['sasCenamorCGMeanOutgoingEdgeWeightSumPerVariable'] = cg_mean_outgoing_edge_weight_sum_per_variable
-                sas_graph_features['sasCenamorCGStddevOutgoingEdgeWeightSumPerVariable'] = cg_stddev_outgoing_edge_weight_sum_per_variable
+
+                if len(variables) > 1:
+                    sas_graph_features['sasCenamorCGStddevIncomingEdgesPerVariable'] = cg_stddev_incoming_edges_per_variable
+                    sas_graph_features['sasCenamorCGStddevOutgoingEdgesPerVariable'] = cg_stddev_outgoing_edges_per_variable
+                    sas_graph_features['sasCenamorCGStddevIncomingEdgeWeightSumPerVariable'] = cg_stddev_incoming_edge_weight_sum_per_variable
+                    sas_graph_features['sasCenamorCGStddevOutgoingEdgeWeightSumPerVariable'] = cg_stddev_outgoing_edge_weight_sum_per_variable
 
             if len(goal_variables) > 0:
                 sas_graph_features['sasCenamorCGMaxIncomingEdgesPerHighLevelVariable'] = cg_max_incoming_edges_per_high_level_variable
                 sas_graph_features['sasCenamorCGMeanIncomingEdgesPerHighLevelVariable'] = cg_mean_incoming_edges_per_high_level_variable
-                sas_graph_features['sasCenamorCGStddevIncomingEdgesPerHighLevelVariable'] = cg_stddev_incoming_edges_per_high_level_variable
 
                 sas_graph_features['sasCenamorCGMaxIncomingEdgeWeightSumPerHighLevelVariable'] = cg_max_incoming_edge_weight_sum_per_high_level_variable
                 sas_graph_features['sasCenamorCGMeanIncomingEdgeWeightSumPerHighLevelVariable'] = cg_mean_incoming_edge_weight_sum_per_high_level_variable
-                sas_graph_features['sasCenamorCGStddevIncomingEdgeWeightSumPerHighLevelVariable'] = cg_stddev_incoming_edge_weight_sum_per_high_level_variable
+
+                if len(goal_variables) > 1:
+                    sas_graph_features['sasCenamorCGStddevIncomingEdgesPerHighLevelVariable'] = cg_stddev_incoming_edges_per_high_level_variable
+                    sas_graph_features['sasCenamorCGStddevIncomingEdgeWeightSumPerHighLevelVariable'] = cg_stddev_incoming_edge_weight_sum_per_high_level_variable
 
         return sas_graph_features
