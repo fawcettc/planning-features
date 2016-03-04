@@ -128,11 +128,11 @@ def export_features_json(features, output_file=sys.stdout):
     # features is a dictionary {instance : {feature_name:feature_value}}
 
     print("{", file=output_file)
-    print("    'instance_features' : {", file=output_file)
+    print("    \"instance_features\" : {", file=output_file)
 
     count_instances = 0
     for instance, instance_features in features.iteritems():
-        print("        '%s' : {" % instance, file=output_file)
+        print("        \"%s\" : {" % instance, file=output_file)
 
         count_features = 0
         for feature,value in instance_features.iteritems():
@@ -141,7 +141,7 @@ def export_features_json(features, output_file=sys.stdout):
             else:
                 feature_sep = ""
 
-            print("            '%s' : %s%s" % (feature, str(value), feature_sep), file=output_file)
+            print("            \"%s\" : %s%s" % (feature, str(value), feature_sep), file=output_file)
 
             count_features += 1
 
