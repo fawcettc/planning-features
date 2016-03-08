@@ -58,6 +58,8 @@ class SASFeatureExtractor(FeatureExtractor):
         ]
 
         sas_file_features = [
+            'sasFileVersion',
+            'sasFileHasMetric',
             'sasFileNumVariables',
             'sasFileMinVariableDomainSize',
             'sasFileMeanVariableDomainSize',
