@@ -60,7 +60,7 @@ float cri_predict_duration (int action, float *duration_act);
 
 float cri_activate_distgraph_ef (int index, int *fact_vect, int *derived_prec, int level, Bool *changed);
 
-inline void cri_heuristic_for_action (int action, int level);
+void cri_heuristic_for_action (int action, int level);
 
 void set_init_computed_dg_costs ();
 

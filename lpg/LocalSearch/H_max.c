@@ -181,7 +181,7 @@ remove_temp_action (int act_pos, int level)
 
 
 
-inline float
+float
 fast_insertion_action_cost (int act_pos, int level, int temp_removed_action)
 {
   register int temp, i, *ptr;

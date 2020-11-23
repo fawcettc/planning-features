@@ -55,7 +55,7 @@ int get_dg_num_fact_cost (register int fact_pos, register int level, dg_num_info
 
 float compute_constr_fact (int constraint, int fact_pos, int level, int initialize, int orig_level, float *cost, float *end_time);
 
-inline float compute_relaxed_fact_cost (int Fact_position, int level, node_cost_list n_cost, int action_level, float max_time_for_timed_fact);
+float compute_relaxed_fact_cost (int Fact_position, int level, node_cost_list n_cost, int action_level, float max_time_for_timed_fact);
 
 int insert_action_inlist (int pos, int fact);
 
