@@ -89,14 +89,14 @@ float get_fact_cost (int Fact_pos, int level, node_cost_list n_cost);
 void set_fact_cost (FctNode_list Fact, node_cost_list n_cost);
 float weight_cost (node_cost_list n_cost);
 
-inline int count_bit1 (register int mask);
+int count_bit1 (register int mask);
 
 int check_mutex_noop_durative (register int position, int level);
 int check_mutex_action (register int act_position, int level);
 int check_mutex_noop (register int position, int level);
 int count_mutex_noop (int noop_pos, int level);
 int count_mutex_noop_at_start (int act_pos, int level);
-inline int count_mutex_action (int act_pos, int level);
+int count_mutex_action (int act_pos, int level);
 
 void insert_element_in_neighb (neighb_list n_elem);
 

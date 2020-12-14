@@ -304,7 +304,7 @@ inline int ctruep(cfma f) {
 }
 #endif
 
-inline int truep(fma *f) {
+int truep(fma *f) {
   fmalist *fs;
   switch(f->t) {
   case natom: return (onelits[f->a] != 1);

@@ -33,7 +33,7 @@
 #ifndef _HMAX_H
 #define _HMAX_H
 
-inline float fast_insertion_action_cost (int act_pos, int level, int temp_removed_action);
+float fast_insertion_action_cost (int act_pos, int level, int temp_removed_action);
 float max_action_cost (neighb_list neighb_act);
 void remove_temp_action (int act_pos, int level);
 

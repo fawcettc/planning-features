@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 cd fast-downward
 ./build_all
 cd ../
