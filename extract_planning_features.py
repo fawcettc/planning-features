@@ -115,8 +115,7 @@ def export_features_csv(features, print_header=True, output_file=sys.stdout):
     sorted_feature_names = None
     for instance,instance_features in features.iteritems():
         if sorted_feature_names == None:
-            sorted_feature_names = instance_features.keys()
-            sorted_feature_names.sort()
+            sorted_feature_names = sorted(instance_features.keys())
 
             if print_header:
                 print('"instanceName","%s"' % '","'.join(sorted_feature_names), file=output_file)
@@ -134,8 +133,11 @@ def export_features_json(features, output_file=sys.stdout):
     for instance, instance_features in features.iteritems():
         print("        \"%s\": {" % instance, file=output_file)
 
+        sorted_features = sorted(instance_features.keys())
+
         count_features = 0
-        for feature,value in instance_features.iteritems():
+        for feature in sorted_features:
+            value = instance_features[feature]
             if count_features < len(instance_features)-1:
                 feature_sep = ","
             else:
