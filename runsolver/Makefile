@@ -10,7 +10,7 @@ STATIC=
 WSIZE:=$(shell if [ `uname -m` = 'x86_64' ] ; then echo 64; else echo 32; fi )
 SYSCALLINCFILE:=$(shell  for f in /usr/include/asm/unistd_$(WSIZE).h /usr/include/`uname -m`-linux-gnu/asm/unistd_$(WSIZE).h /usr/include/i386-linux-gnu/asm/unistd_$(WSIZE).h; do if [ -e $$f ] ; then echo $$f ; break ; fi ; done )
 
-CFLAGS=-Dtmpdebug -Wall -DVERSION=\"$(VERSION)\" -DSVNVERSION=\"$(SVNVERSION)\" -DWSIZE=$(WSIZE)
+CFLAGS=-std=c++11 -Dtmpdebug -Wall -DVERSION=\"$(VERSION)\" -DSVNVERSION=\"$(SVNVERSION)\" -DWSIZE=$(WSIZE)
 
 SRC=runsolver.cc SignalNames.cc SyscallNames.cc
 OBJ=$(SRC:.cc=.o)
