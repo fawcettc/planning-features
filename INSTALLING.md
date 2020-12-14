@@ -12,6 +12,25 @@ This will hopefully build each of the dependencies successfully. If any fail,
 you will need to manually investigate the build process of that dependency.
 Please contact us if you run into such issues and have difficulty resolving them.
 
+### Docker
+
+We have included a Dockerfile for building an Ubuntu 20.04 image containing the
+planning-features extractors. If you have Docker installed, simply run the following from
+the repository root:
+
+    (planning-features/)$ docker build -t planning-features .
+
+This will take some time, but you should end up with a *planning-features:latest* image.
+
+You can test the image by extracting the features from our single example pddl:
+
+    $ docker run -it --rm planning-features:latest /opt/planning-features/extract_planning_features.py --domain-file /opt/planning-features/examples/barman.pddl --instance-file /opt/planning-features/examples/ipc-agile-2014-barman-p1-11-4-15.pddl
+
+You can utilize volumes in order to provide your own features for extraction, and
+for storing the results:
+
+    $ docker run -it --rm -v <some host directory>:/opt/planning-instances -v <some other host directory>:/opt/extracted-features planning-features:latest /opt/planning-features/extract_planning_features.py --domain-file /opt/planning-instances/<path to domain> --instance-file /opt/planning-instances/<path to instance> --json-output-file /opt/extracted-features/<path to output json> --csv-output-file /opt/extracted-features/<path to output CSV>
+
 ### Requirements
 
  * We currently require GNU/Linux (and likely only a subset of distributions) due
